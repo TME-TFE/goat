@@ -1,0 +1,160 @@
+setenv SYSNAME `uname`_`arch`
+
+
+if ( `make --version | head -1 | awk '{print $1}'` != "GNU" ) then
+    echo "Aliasing gmake to make"
+    alias gmake make
+endif
+
+
+if ( ! $?LD_LIBRARY_PATH ) then
+    setenv LD_LIBRARY_PATH
+endif
+
+if ( ! $?LIBRARY_PATH ) then
+    setenv LIBRARY_PATH
+endif
+
+if ( ! $?CPATH ) then
+    setenv CPATH
+endif
+
+
+
+setenv BREW_PATH `brew --prefix`/opt
+echo "Using hombrew in $BREW_PATH"
+
+
+echo "Required dependencies:"
+
+# Check access to OpenMP
+if ( `brew list | grep -c '^libomp$'` == 1 ) then
+    echo "-> [*] Using brewed libomp (OpenMP)"
+else
+    echo "-> [X] ERROR: libomp (OpenMP) not brewed: Use 'brew install libomp'"
+    exit 1
+endif
+
+# SuiteSparse configuration
+if ( `brew list | grep -c '^suite-sparse$'` == 1 ) then
+    echo "-> [*] Using brewed suite-sparse"
+    setenv SUITESPARSE_ROOT "$BREW_PATH/suite-sparse"
+    setenv LD_LIBRARY_PATH "$SUITESPARSE_ROOT/lib":$LD_LIBRARY_PATH
+    setenv LIBRARY_PATH "$SUITESPARSE_ROOT/lib":$LIBRARY_PATH
+    setenv CPATH "$SUITESPARSE_ROOT/include/suitesparse":$CPATH
+else
+    echo "-> [X] ERROR: suite-sparse not brewed: Use 'brew install suite-sparse'"
+    exit 1
+endif
+
+
+# OpenBLAS configuration
+if ( `brew list | grep -c '^openblas$'` == 1 ) then
+    echo "-> [*] Using brewed openblas"
+    setenv OPENBLAS_ROOT "$BREW_PATH/openblas"
+    setenv LD_LIBRARY_PATH "$OPENBLAS_ROOT/lib":$LD_LIBRARY_PATH
+    setenv LIBRARY_PATH "$OPENBLAS_ROOT/lib":$LIBRARY_PATH
+    setenv CPATH "$OPENBLAS_ROOT/include":$CPATH
+else
+    echo "-> [X] ERROR: openblas not brewed: Use 'brew install openblas'"
+    exit 1
+endif
+
+
+# GMP (GNU Multiple-Precision Arithmetic Library) configuration
+if ( `brew list | grep -c '^gmp$'` == 1 ) then
+    echo "-> [*] Using brewed gmp"
+    setenv GMP_ROOT "$BREW_PATH/gmp"
+    setenv LD_LIBRARY_PATH "$GMP_ROOT/lib":$LD_LIBRARY_PATH
+    setenv LIBRARY_PATH "$GMP_ROOT/lib":$LIBRARY_PATH
+    setenv CPATH "$GMP_ROOT/include":$CPATH
+else
+    echo "-> [X] ERROR: gmp not brewed: Use 'brew install gmp'"
+    exit 1
+endif
+
+
+
+# MPFR (Multiple-Precision Floating-Point Reliable Library) configuration
+if ( `brew list | grep -c '^mpfr$'` == 1 ) then
+    echo "-> [*] Using brewed mpfr"
+    setenv MPFR_ROOT "$BREW_PATH/mpfr"
+    setenv LD_LIBRARY_PATH "$MPFR_ROOT/lib":$LD_LIBRARY_PATH
+    setenv LIBRARY_PATH "$MPFR_ROOT/lib":$LIBRARY_PATH
+    setenv CPATH "$MPFR_ROOT/include":$CPATH
+else
+    echo "-> [X] ERROR: mpfr not brewed: Use 'brew install mpfr'"
+    exit 1
+endif
+
+
+
+echo "Optional dependencies:"
+
+## MPI. Preference for Open MPI vs MPICH?
+if ( `brew list | grep -c '^open-mpi$'` == 1 ) then
+    echo "-> [*] Using brewed open-mpi"
+    echo "-> [X] NOT using mpich"
+    ## setenv USE_MPI yes or something like that?
+else
+    echo "-> [X] NOT using open-mpi"
+    if ( `brew list | grep -c '^mpich$'` == 1 ) then
+        echo "-> [*] Using brewed open-mpi"
+    else
+        echo "-> [X] NOT using mpich"
+    endif
+endif
+
+
+## ScaLAPACK
+if ( `brew list | grep -c '^scalapack$'` == 1 ) then
+    echo "-> [*] Using brewed scalapack"
+    ## setenv USE_SCALAPACK yes or something like that?
+else
+    echo "-> [X] NOT using scalapack"
+endif
+
+
+
+## MUMPS configuration
+## For now I cannot even install it
+if ( 0 ) then
+    ## This is the example I downloaded, similar to KU Leuven's but does not work either
+    setenv MUMPS_ROOT ~/repository/mumps
+    setenv PORD_ROOT
+    setenv DMUMPS_LPATH "-L${MUMPS_ROOT}/lib"
+    setenv DMUMPS_LPATH "${DMUMPS_LPATH} -lsmumps -ldmumps -lmumps_common"
+    setenv DMUMPS_LPATH "${DMUMPS_LPATH} -L/usr/lib"
+    setenv DMUMPS_LPATH "${DMUMPS_LPATH} -lscalapack"
+    setenv DMUMPS_LPATH "${DMUMPS_LPATH} -openmpi"
+    setenv DMUMPS_LPATH "${DMUMPS_LPATH} -lparmetis -lmetis"
+    setenv DMUMPS_LPATH "${DMUMPS_LPATH} -L${PORD_ROOT}/lib/ -lpord"
+    setenv DMUMPS_LPATH "${DMUMPS_LPATH} -lptesmumps"
+    setenv DMUMPS_LPATH "${DMUMPS_LPATH} -lptscotch -lptscotcherr"
+    setenv DMUMPS_LPATH "${DMUMPS_LPATH} -llapack"
+    setenv DMUMPS_LPATH "${DMUMPS_LPATH} -lblas"
+    setenv DMUMPS_LPATH "${DMUMPS_LPATH} -lpthread"
+
+    setenv DMUMPS_IPATH "-I${MUMPS_ROOT}/include"
+    echo "-> [*] Using MUMPS in $MUMPS_ROOT"
+else
+    echo "-> [X] NOT using MUMPS"
+endif
+
+
+
+
+# Compilers
+setenv FC gfortran
+setenv CC gcc
+setenv CXX g++
+
+
+## ALIASES
+alias goat "${GOATTOP}/executables/goat.exe"
+
+# Optional (limit parallel build)
+setenv OMP_NUM_THREADS 4
+echo "OMP threads: $OMP_NUM_THREADS"
+
+

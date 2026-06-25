@@ -255,6 +255,9 @@ case "*.vg":
 case "*.ch":
   echo CH_UNKNOWN
   breaksw
+case "mac*"
+  echo DARWIN
+  breaksw
 default:
   echo UNKNOWN
 endsw

@@ -36,37 +36,41 @@ UMFPACKPATH = -lumfpack
 #DMUMPSPATH = -L../../MUMPS_5.8.0/lib -lsmumps -ldmumps -lmumps_common -L/usr/lib  -lparmetis -lmetis -L../../PORD/lib/ -lpord -L/usr/lib -lptesmumps -lptscotch -lptscotcherr -lscalapack-openmpi  -llapack   -lblas -lpthread
 
 
-## DMUMPSLIBPATH        : DMUMPS include path (user defined, optional)
-ifdef DMUMPS_LPATH 
-    ifdef DMUMPS_IPATH
-        ifndef NO_USE_MPI
-            # Define mumps 
-            MUMPS = yes 
-            # Mumps has to be compiled with MPI
-            USE_MPI = yes 
-            $(info % MUMPS library and include paths set, MPI available. Compiling with MUMPS) 
-        else 
-            undefine USE_MPI
-            undefine DMUMPS_LPATH 
-            undefine DMUMPS_IPATH 
-            $(info % MUMPS paths available, but no MPI. Not compiling MUMPS.)
-        endif
-    else
-        # Not all paths define, issue message and undefine to ensure proper compilation
-        $(info % MUMPS include path not set, set "DMUMPS_LPATH" and "DMUMPS_IPATH" to enable compilation with MUMPS)  
-        undefine DMUMPS_LPATH 
-        undefine DMUMPS_IPATH 
-    endif
-else
-    # Not all paths define, issue message and undefine to ensure proper compilation
-    $(info % MUMPS library path not set, set "DMUMPS_LPATH" and "DMUMPS_IPATH" to enable compilation with MUMPS) 
-    undefine DMUMPS_LPATH 
-    undefine DMUMPS_IPATH 
-endif
+## IPAR: ALL of this brings problems: undefine is missing some sort of separator missing
+### DMUMPSLIBPATH        : DMUMPS include path (user defined, optional)
+#ifdef DMUMPS_LPATH 
+#    ifdef DMUMPS_IPATH
+#        ifndef NO_USE_MPI
+#            # Define mumps 
+#            MUMPS = yes 
+#            # Mumps has to be compiled with MPI
+#            USE_MPI = yes 
+#            $(info % MUMPS library and include paths set, MPI available. Compiling with MUMPS) 
+#        else 
+#            undefine USE_MPI
+#            undefine DMUMPS_LPATH 
+#            undefine DMUMPS_IPATH 
+#            $(info % MUMPS paths available, but no MPI. Not compiling MUMPS.)
+#        endif
+#    else
+#        # Not all paths define, issue message and undefine to ensure proper compilation
+#        $(info % MUMPS include path not set, set "DMUMPS_LPATH" and "DMUMPS_IPATH" to enable compilation with MUMPS)
+#        undefine DMUMPS_LPATH 
+#        undefine DMUMPS_IPATH 
+#    endif
+#else
+#    # Not all paths define, issue message and undefine to ensure proper compilation
+#    $(info % MUMPS library path not set, set "DMUMPS_LPATH" and "DMUMPS_IPATH" to enable compilation with MUMPS)
+#    undefine DMUMPS_LPATH
+#    undefine DMUMPS_IPATH
+#endif
 
 # Define MUMPS for the compiler
 ifdef MUMPS 
-COMPDIRVARS += -DMUMPS 
+$(info % Compiling with MUMPS solver)
+COMPDIRVARS += -DMUMPS
+else
+$(info % Compiling without MUMPS solver)
 endif
 
 ## SOLPSTOP            : path to SOLPS (overridden if SOLPSTOP is define)

@@ -24,6 +24,7 @@ set iter_check=`echo $machine_location | cut -d '.' -f 2-3`
 if ("$iter_check" == "iter.org") then
   set fullhost=$machine_location
 endif
+echo $fullhost
 # Assign location
 switch ($fullhost)
 case "*.iter.org":
@@ -39,6 +40,7 @@ case "*.eufus.eu":
 case "*.efda-itm.eu":
 case "*.marconi.cineca.it"
 case "*.galileo.cineca.it"
+case "*.efgw.local":
   [ -d /afs ] && echo ITM || echo MARCONI
   breaksw
 case "*.ipp-garching.mpg.de":

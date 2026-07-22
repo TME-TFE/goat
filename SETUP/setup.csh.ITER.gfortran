@@ -4,7 +4,7 @@ module load gompi/2023b
 module load SCOTCH/7.0.4-gompi-2023b
 module load ScaLAPACK/2.2.0-gompi-2023b-fb
 module load OpenBLAS/0.3.24-GCC-13.2.0
-module load METIS/5.1.0-GCCcore-13.2.0 
+module load METIS/5.1.0-GCCcore-13.2.0
 module load ParMETIS/4.0.3-gompi-2023b
 
 setenv SUITESPARSEPATH '-I${EBROOTSUITESPARSE}/include/suitesparse'

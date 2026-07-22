@@ -2,25 +2,25 @@
 # include <stdlib.h>
 # include <cs.h>
 # include "clayer.h"
-# include <time.h> 
+# include <time.h>
 
 /*
-Just a small test routine for compilation etc 
+Just a small test routine for compilation etc
 */
-main() 
+void main()
 {
     /* Construct a matrix */
     srand(time(NULL));
-    cs *T, *B, *C, *thisCS, *A, *thismmCS; 
+    cs *T, *B, *C, *thisCS, *A, *thismmCS;
     MyCSparse *this, *thismm;
     int const nval = 500;
     int rows[nval];
     int cols[nval];
-    double vals[nval]; 
+    double vals[nval];
     int i;
     int ncol;
-    int nz; 
-    int p1, p2, length, p; 
+    int nz;
+    int p1, p2, length, p;
     int temp;
 
 
@@ -45,7 +45,7 @@ main()
     thismm = SpMM(this, this);
 
     thismmCS = ConvertMyCSparseToCS(thismm);
-    
+
     cs_print(thismmCS, i);
 
 
@@ -63,7 +63,7 @@ main()
     A = cs_compress(T); // convert to csc format for multiplication
     B = cs_multiply(A, A);
 
-    /* Convert to triplet format again - fully based on 
+
     umfpack_col_to_triplet
      */
     C = B;

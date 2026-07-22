@@ -6,17 +6,17 @@
 
 ! Short description
 !==================
-! This is the main driver to run tests for several components/features 
-! of the goat module. Different tests are available 
+! This is the main driver to run tests for several components/features
+! of the goat module. Different tests are available
 
-module GOAT_tests 
+module GOAT_tests
 
     use mod_structured2Dgridding
     use, intrinsic :: ieee_arithmetic
     implicit none
-    save 
+    save
 
-    contains 
+    contains
 
     !------------------------------------------------------------------!
     !                         General drivers                          !
@@ -41,12 +41,12 @@ module GOAT_tests
     ! Write starting header
     subroutine DisplayTestStart(testname)
 
-        character(*),  intent(in)       :: testname 
+        character(*),  intent(in)       :: testname
 
         print *, '%---------------------------------------------------%'
         print *, '%                      TEST START                   %'
         print *, '%---------------------------------------------------%'
-        print *, 'Test name: ' // testname 
+        print *, 'Test name: ' // testname
 
     end subroutine
 
@@ -71,7 +71,7 @@ module GOAT_tests
         use mod_sparseinterface
 
         implicit none
-        save 
+        save
 
         ! Declare variables
         !==================
@@ -87,7 +87,7 @@ module GOAT_tests
             derivx, derivy
         real(R8)                            :: Lx, Ly
 
-        character(:), allocatable           :: meth 
+        character(:), allocatable           :: meth
         integer(I8), allocatable            :: reshuffle(:), aind(:), &
             vind(:)
         real(R8), allocatable               :: xgv(:), ygv(:), &
@@ -100,7 +100,7 @@ module GOAT_tests
             erelFW, erelBW, erelC, dvqda
 
         ! Loop
-        integer(I8)                         :: i, j, k 
+        integer(I8)                         :: i, j, k
 
         ! Initialize
         !===========
@@ -111,26 +111,26 @@ module GOAT_tests
         nx = 10 ! number of cells, not vertices!
         ny = 10
         Lx = 10
-        Ly = 5 
+        Ly = 5
         allocate(xgv(nx+1), ygv(ny+1), v(nx+1, ny+1))
-        xgv = Lx*[(k, k=0, nx)]/nx 
+        xgv = Lx*[(k, k=0, nx)]/nx
         ygv = Ly*[(k, k=0, ny)]/ny
 
         ! Set evaluation points (avoid out of bounds)
         !nq = 10000
-        !nres = 6 ! number of results 
+        !nres = 6 ! number of results
         !allocate(xq(nq), yq(nq), vqan(nq, nres), dv(nq, nres), &
         !    vq(nq, nres), temp(nq), vqeval(nq), vqFW(nq), vqBW(nq))
         !call random_number(xq)
         !call random_number(yq)
 
         nq = 2
-        nres = 6 ! number of results 
+        nres = 6 ! number of results
         allocate(xq(nq), yq(nq), vqan(nq, nres), dv(nq, nres), vq(nq, nres), &
             temp(nq), vqeval(nq), vqFW(nq), vqBW(nq))
         xq = [0.12, 0.999]
         yq = [0.16, 0.999]
-        
+
         xq = xq*Lx
         yq = yq*Ly
 
@@ -142,7 +142,7 @@ module GOAT_tests
         do i = 1, nx+1
             do j = 1, ny+1
                 v(i, j) = a(1) + a(2)*xgv(i) + a(3)*ygv(j)
-            end do 
+            end do
         end do
 
         ! Build interpolant
@@ -153,7 +153,7 @@ module GOAT_tests
 
         ! Test evaluation
         !----------------
-        ! Test1: evaluate the interpolant at some query points and 
+        ! Test1: evaluate the interpolant at some query points and
         ! evaluate the analytic solution
         vqan(:, 1) = a(1) + a(2)*xq + a(3)*yq ! field value
         vqan(:, 2) = a(3) ! dfdy
@@ -167,15 +167,15 @@ module GOAT_tests
                 call interp%Evaluate(xq, yq, i, j, temp)
                 vq(:, k) = temp
                 k = k + 1
-            end do 
-        end do 
+            end do
+        end do
 
         ! Evaluate norm
         dv = vqan - vq
         allocate(relerr(nres), reshuffle(nres))
         do k = 1, nres
             relerr(k) = maxval(abs(dv(:, k)/vqan(:, k)))
-        enddo 
+        enddo
         reshuffle = [1, 4, 2, 6, 5, 3]
 
         ! Print
@@ -188,12 +188,12 @@ module GOAT_tests
         ! (otherwise extremely likely to have zero derivatives everywhere)
         deallocate(xq, yq, vq, vqan, dv, temp, vqeval, vqFW, vqBW)
         nq = 2
-        nres = 6 ! number of results 
+        nres = 6 ! number of results
         allocate(xq(nq), yq(nq), vqan(nq, nres), dv(nq, nres), vq(nq, nres), &
             temp(nq), vqeval(nq), vqFW(nq), vqBW(nq))
         xq = [0.12, 0.999]
         yq = [0.16, 0.999]
-        
+
         xq = xq*Lx
         yq = yq*Ly
 
@@ -203,7 +203,7 @@ module GOAT_tests
 
         ! Print
         print *, 'Partial derivatives, derivtype: values w.r.t. interpolant coefficients'
-        
+
         ! Derivatives w.r.t. coefficients and initial values. Compare to FD
         call interp%EvaluateDiffInterp2Coef(xq, yq, derivx, derivy, vqeval, jaca)
 
@@ -212,22 +212,22 @@ module GOAT_tests
 
         ! Indices to test all coefficients in certain cell
         !aind = [(k, k = 12, 12+(size(interp%a, 2)-1)*nx*ny, nx*ny)] ![(k, k = 1, (nx+1)*(ny+1))]
-        
+
         ! Indices to test only a couple of derivatives
         aind = [12, 12 + nx*ny, 12+2*nx*ny]
 
-        d = [1e-8, 1e-6, 1e-4, 1e-2] 
-        
+        d = [1e-8, 1e-6, 1e-4, 1e-2]
+
         do i = 1, size(aind, 1)
             ! Output
             print *, 'variable: ', aind(i)
             print *, '| step size | eabsFW | eabsBW | eabsC | erelFW | erelBW | erelC | indrelC |'
-            
+
             ! Extract value of implemented derivative
             call jaca%ExtractColumnFull(dvqda, aind(i))
 
             ! Loop over fd steps
-            do j = 1, size(d, 1) 
+            do j = 1, size(d, 1)
                 ! Forward difference
                 avals(aind(i)) = avals(aind(i)) + d(j)
                 interp%a = reshape(avals, [size(interp%a, 1), size(interp%a, 2)])
@@ -251,9 +251,9 @@ module GOAT_tests
                 eabsFW = abs(dvqda - dvqdaFW)
                 eabsBW = abs(dvqda - dvqdaBW)
                 eabsC = abs(dvqda - 0.5*(dvqdaFW + dvqdaBW))
-                erelFW = eabsFW/dvqda 
-                erelBW = eabsBW/dvqda 
-                erelC = eabsC/dvqda 
+                erelFW = eabsFW/dvqda
+                erelBW = eabsBW/dvqda
+                erelC = eabsC/dvqda
 
                 ! Print out information
                 print *, d(j), maxval(eabsFW), maxval(eabsBW), &
@@ -267,26 +267,26 @@ module GOAT_tests
         !-----------------
         ! Print
         print *, 'Partial derivatives, derivtype: values w.r.t. interpolant coefficients'
-        
+
         ! Derivatives w.r.t. coefficients and initial values. Compare to FD
         call interp%EvaluateDiffCoef2Val(xgv, ygv, v, jacvq)
 
         ! Compare with FD
-        vvals = reshape(v, [(nx+1)*(ny+1)]) 
+        vvals = reshape(v, [(nx+1)*(ny+1)])
         ainit = reshape(interp%a, [size(interp%a)])
         vind = [1, nx + 1, 2, 2+ nx]
-        d = [1e-8, 1e-6, 1e-4, 1e-2] 
-        
+        d = [1e-8, 1e-6, 1e-4, 1e-2]
+
         do i = 1, size(vind, 1)
             ! Output
             print *, 'variable: ', vind(i)
             print *, '| step size | eabsFW | eabsBW | eabsC | erelFW | erelBW | erelC | indrelC |'
-            
+
             ! Extract value of implemented derivative
             call jacvq%ExtractColumnFull(dvqda, vind(i))
 
             ! Loop over fd steps
-            do j = 1, size(d, 1) 
+            do j = 1, size(d, 1)
                 ! Forward difference
                 vvals(vind(i)) = vvals(vind(i)) + d(j)
                 tempvals = reshape(vvals, [nx+1, ny+1])
@@ -309,9 +309,9 @@ module GOAT_tests
                 eabsFW = abs(dvqda - dvqdaFW)
                 eabsBW = abs(dvqda - dvqdaBW)
                 eabsC = abs(dvqda - 0.5*(dvqdaFW + dvqdaBW))
-                erelFW = eabsFW/dvqda 
-                erelBW = eabsBW/dvqda 
-                erelC = eabsC/dvqda 
+                erelFW = eabsFW/dvqda
+                erelBW = eabsBW/dvqda
+                erelC = eabsC/dvqda
 
                 ! Print out information
                 print *, d(j), maxval(eabsFW), maxval(eabsBW), &
@@ -321,12 +321,12 @@ module GOAT_tests
 
             end do
         end do
-        
+
         ! Test derivatives
         !-----------------
         ! Print
         print *, 'Partial derivatives, derivtype: values w.r.t. initial values coefficients'
-        
+
         ! Set derivatives
         derivx = 0
         derivy = 0
@@ -335,7 +335,7 @@ module GOAT_tests
         do i = 1, nx+1
             do j = 1, ny+1
                 v(i, j) = sin(xgv(i))*sin(ygv(j))
-            end do 
+            end do
         end do
 
         ! Derivatives w.r.t. coefficients and initial values. Compare to FD
@@ -344,20 +344,20 @@ module GOAT_tests
         call interp%EvaluateDiffInterp2Val(xq, yq, derivx, derivy, jacvq)
 
         ! Compare with FD
-        vvals = reshape(v, [(nx+1)*(ny+1)]) 
+        vvals = reshape(v, [(nx+1)*(ny+1)])
         vind = [1, nx + 1, 2, 2+ nx]
-        d = [1e-8, 1e-6, 1e-4, 1e-2] 
-        
+        d = [1e-8, 1e-6, 1e-4, 1e-2]
+
         do i = 1, size(vind, 1)
             ! Output
             print *, 'variable: ', vind(i)
             print *, '| step size | eabsFW | eabsBW | eabsC | erelFW | erelBW | erelC | indrelC |'
-            
+
             ! Extract value of implemented derivative
             call jacvq%ExtractColumnFull(dvqda, vind(i))
 
             ! Loop over fd steps
-            do j = 1, size(d, 1) 
+            do j = 1, size(d, 1)
                 ! Forward difference
                 vvals(vind(i)) = vvals(vind(i)) + d(j)
                 tempvals = reshape(vvals, [nx+1, ny+1])
@@ -382,9 +382,9 @@ module GOAT_tests
                 eabsFW = abs(dvqda - dvqdaFW)
                 eabsBW = abs(dvqda - dvqdaBW)
                 eabsC = abs(dvqda - 0.5*(dvqdaFW + dvqdaBW))
-                erelFW = eabsFW/dvqda 
-                erelBW = eabsBW/dvqda 
-                erelC = eabsC/dvqda 
+                erelFW = eabsFW/dvqda
+                erelBW = eabsBW/dvqda
+                erelC = eabsC/dvqda
 
                 ! Print out information
                 print *, d(j), maxval(eabsFW), maxval(eabsBW), &
@@ -407,7 +407,7 @@ module GOAT_tests
             do j = 1, ny+1
                 v(i, j) = a(1) + a(2)*xgv(i) + a(3)*ygv(j) + &
                     a(4)*xgv(i)*ygv(j) + a(5)*xgv(i)**2 + a(6)*ygv(j)**2
-            end do 
+            end do
         end do
 
         ! Build interpolant
@@ -415,7 +415,7 @@ module GOAT_tests
         call interp%SetParameters(meth, 3, 6)
         call interp%Construct(xgv, ygv, v)
 
-        ! Test1: evaluate the interpolant at some query points and 
+        ! Test1: evaluate the interpolant at some query points and
         ! evaluate the analytic solution
         vqan(:, 1) = a(1) + a(2)*xq + a(3)*yq + a(4)*xq*yq + &
             a(5)*xq**2 + a(6)*yq**2 ! field value
@@ -431,14 +431,14 @@ module GOAT_tests
                 call interp%Evaluate(xq, yq, i, j, temp)
                 vq(:, k) = temp
                 k = k + 1
-            end do 
-        end do 
+            end do
+        end do
 
         ! Evaluate norm
         dv = vqan - vq
         do k = 1, nres
             relerr(k) = maxval(abs(dv(:, k)/vqan(:, k)))
-        enddo 
+        enddo
 
         ! Print
         print *, 'Quadratic field test case', relerr(reshuffle)
@@ -454,7 +454,7 @@ module GOAT_tests
 
 
 
-    end subroutine 
+    end subroutine
 
     ! CSparse interface
     subroutine TestCSparse()
@@ -473,7 +473,7 @@ module GOAT_tests
         integer(I8)        :: n
         real(c_double), allocatable     :: val(:)
         integer(c_int), allocatable     :: row(:), col(:)
-        integer(c_int)                  :: nrow, ncol, nval 
+        integer(c_int)                  :: nrow, ncol, nval
         real(c_double), pointer         :: valp(:)
         integer(c_int), pointer         :: rowp(:), colp(:), rowp2(:)
         real(R8)                        :: t_start, t_end
@@ -487,19 +487,19 @@ module GOAT_tests
         row = [1, 2, 3, 4, 5]
         col = [1, 2, 3, 4, 5]
 
-        A%nrow = nrow 
-        A%ncol = ncol 
-        A%nval = nval 
+        A%nrow = nrow
+        A%ncol = ncol
+        A%nval = nval
         call A%Allocate()
-        A%row = row 
-        A%col = col 
-        A%val = val 
+        A%row = row
+        A%col = col
+        A%val = val
 
-        B = A*A 
+        B = A*A
 
-        print *, B%row 
-        print *, B%col 
-        print *, B%val 
+        print *, B%row
+        print *, B%col
+        print *, B%val
 
         ! Random sparse matrices
         !=======================
@@ -512,15 +512,15 @@ module GOAT_tests
         !call c_f_pointer(A%col, rowp, [A%nval])
         !print *, rowp
 
-        !print *, D%row 
-        !print *, D%col 
+        !print *, D%row
+        !print *, D%col
         !print *, D%val
 
         ! Time and multiply
         call cpu_time(t_start)
-        F = D*E 
+        F = D*E
         call cpu_time(t_end)
-        print *, 'Time elapsed for multiplying matrices with ',  n, ' nonzeros: ', t_end-t_start 
+        print *, 'Time elapsed for multiplying matrices with ',  n, ' nonzeros: ', t_end-t_start
 
     end subroutine
 
@@ -545,9 +545,9 @@ module GOAT_tests
         class(PolygonLevelsetFunction2DUDT), allocatable    :: plfg, &
             plfce, plfca
 
-        type(PLF2DGeneralOptionsUDT)                :: optionsg 
+        type(PLF2DGeneralOptionsUDT)                :: optionsg
         type(PLF2DClosedExactOptionsUDT)            :: optionsce
-        type(PLF2DClosedApproximationOptionsUDT)    :: optionsca 
+        type(PLF2DClosedApproximationOptionsUDT)    :: optionsca
 
         type(PolygonSetUDT)         :: psg, psce, psca
 
@@ -581,7 +581,7 @@ module GOAT_tests
         xncp = [1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.75, 0.75, 0.25, 0.25, 0.75 ]
         yncp = [0.0 , 1.0, 1.0, 0.0, 0.0, 0.0, 0.25, 0.75, 0.75, 0.25, 0.25 ]
 
-        xncp(6) = NaN 
+        xncp(6) = NaN
         yncp(6) = NaN
 
         ! Construct
@@ -640,24 +640,24 @@ module GOAT_tests
         minxm = minval(xp)
         maxym = maxval(yp)
         minym = minval(yp)
-        
-        xgv = [(i, i = 0, nxm-1)]*(1./real(nxm-1, kind=R8))*(maxxm - minxm) + minxm 
-        ygv = [(i, i = 0, nym-1)]*(1./real(nym-1, kind=R8))*(maxym - minym) + minym 
+
+        xgv = [(i, i = 0, nxm-1)]*(1./real(nxm-1, kind=R8))*(maxxm - minxm) + minxm
+        ygv = [(i, i = 0, nym-1)]*(1./real(nym-1, kind=R8))*(maxym - minym) + minym
 
         call Construct2DStructuredGrid(xgv, ygv, nxm, nym, xq, yq)
 
         ! Evaluate implemented derivatives
         call plfg%Evaluate(xq, yq, &
             0, 0, vqg, 'polygonsetcoordinates', valuesg, dplfgdvar)
-        
+
         ! Compute finite differences (crude)
         print *, 'Evaluating FD for general polygonset (variable: polygonsetcoordinates)'
-        
+
         do j = 1, size(varind)
             ! Output
             print *, 'variable: ', varind(j)
             print *, '| step size | eabsdir | eabsFW | eabsBW | eabsC | ereldir | erelFW | erelBW | erelC | indrelC |'
-            
+
             ! Extract value of implemented derivative
             call dplfgdvar%ExtractColumnFull(dvqg, varind(j))
             do i = 1, size(d)
@@ -696,16 +696,16 @@ module GOAT_tests
                 eabsFW = abs(dvqg - dvqFW)
                 eabsBW = abs(dvqg - dvqBW)
                 eabsC = abs(dvqG - 0.5*(dvqFW + dvqBW))
-                erelFW = eabsFW/dvqg 
-                erelBW = eabsBW/dvqg 
-                erelC = eabsC/dvqg 
-                eabsdir = eabsFW 
+                erelFW = eabsFW/dvqg
+                erelBW = eabsBW/dvqg
+                erelC = eabsC/dvqg
+                eabsdir = eabsFW
                 ereldir = eabsFW/dvqg
                 where (eabsFW > eabsBW)
-                    eabsdir = eabsBW 
+                    eabsdir = eabsBW
                     ereldir = eabsBW/dvqg
                 end where
-            
+
 
                 ! Print out information
                 print *, d(i), maxval(eabsdir), maxval(eabsFW), maxval(eabsBW), &
@@ -716,7 +716,7 @@ module GOAT_tests
                 !-------
                 ! Downdate values
                 valuesg(varind(j)) = valuesg(varind(j)) + d(i) ! + d to compensate for - d
-            
+
                 ! Update polygonset coordinates (no need to update plf)
                 call plfg%ps%UpdateCoordinates(valuesg(1:nvaluesg), valuesg(nvaluesg+1:2*nvaluesg))
 
@@ -726,7 +726,7 @@ module GOAT_tests
         ! Housekeeping
         deallocate(xq, yq, vqg, vqgFW, vqgBW)
 
-        
+
 
         ! Closed exact
         !-------------
@@ -753,9 +753,9 @@ module GOAT_tests
         minxm = minval(xp)-0.1
         maxym = maxval(yp)+0.1
         minym = minval(yp)-0.1
-        
-        xgv = [(i, i = 0, nxm-1)]*(1./real(nxm-1, kind=R8))*(maxxm - minxm) + minxm 
-        ygv = [(i, i = 0, nym-1)]*(1./real(nym-1, kind=R8))*(maxym - minym) + minym 
+
+        xgv = [(i, i = 0, nxm-1)]*(1./real(nxm-1, kind=R8))*(maxxm - minxm) + minxm
+        ygv = [(i, i = 0, nym-1)]*(1./real(nym-1, kind=R8))*(maxym - minym) + minym
 
         call Construct2DStructuredGrid(xgv, ygv, nxm, nym, xq, yq)
 
@@ -765,12 +765,12 @@ module GOAT_tests
 
         ! Compute finite differences (crude)
         print *, 'Evaluating FD for closed exact polygonset (variable: polygonsetcoordinates)'
-        
+
         do j = 1, size(varind)
             ! Output
             print *, 'variable: ', varind(j)
             print *, '| step size | eabsdir | eabsFW | eabsBW | eabsC | ereldir | erelFW | erelBW | erelC | indrelC |'
-            
+
             ! Extract value of implemented derivative
             call dplfcedvar%ExtractColumnFull(dvqg, varind(j))
             do i = 1, size(d)
@@ -809,17 +809,17 @@ module GOAT_tests
                 eabsFW = abs(dvqg - dvqFW)
                 eabsBW = abs(dvqg - dvqBW)
                 eabsC = abs(dvqG - 0.5*(dvqFW + dvqBW))
-                eabsdir = eabsFW 
+                eabsdir = eabsFW
                 ereldir = eabsFW/dvqg
                 where (eabsFW > eabsBW)
-                    eabsdir = eabsBW 
+                    eabsdir = eabsBW
                     ereldir = eabsBW/dvqg
                 end where
-                
-                erelFW = eabsFW/dvqg 
-                erelBW = eabsBW/dvqg 
-                erelC = eabsC/dvqg 
-            
+
+                erelFW = eabsFW/dvqg
+                erelBW = eabsBW/dvqg
+                erelC = eabsC/dvqg
+
 
                 ! Print out information
                 print *, d(i), maxval(eabsdir), maxval(eabsFW), maxval(eabsBW), &
@@ -831,7 +831,7 @@ module GOAT_tests
                 !-------
                 ! Downdate values
                 valuesg(varind(j)) = valuesg(varind(j)) + d(i) ! + d to compensate for - d
-            
+
                 ! Update polygonset coordinates (no need to update plf)
                 call plfce%ps%UpdateCoordinates(valuesg(1:nvaluesg), valuesg(nvaluesg+1:2*nvaluesg))
 
@@ -867,9 +867,9 @@ module GOAT_tests
         minxm = minval(xp)-0.1
         maxym = maxval(yp)+0.1
         minym = minval(yp)-0.1
-        
-        xgv = [(i, i = 0, nxm-1)]*(1./real(nxm-1, kind=R8))*(maxxm - minxm) + minxm 
-        ygv = [(i, i = 0, nym-1)]*(1./real(nym-1, kind=R8))*(maxym - minym) + minym 
+
+        xgv = [(i, i = 0, nxm-1)]*(1./real(nxm-1, kind=R8))*(maxxm - minxm) + minxm
+        ygv = [(i, i = 0, nym-1)]*(1./real(nym-1, kind=R8))*(maxym - minym) + minym
 
         call Construct2DStructuredGrid(xgv, ygv, nxm, nym, xq, yq)
 
@@ -879,12 +879,12 @@ module GOAT_tests
 
         ! Compute finite differences (crude)
         print *, 'Evaluating FD for closed approximation polygonset (variable: polygonsetcoordinates)'
-        
+
         do j = 1, size(varind)
             ! Output
             print *, 'variable: ', varind(j)
             print *, '| step size | eabsdir | eabsFW | eabsBW | eabsC | ereldir | erelFW | erelBW | erelC | indrelC |'
-            
+
             ! Extract value of implemented derivative
             call dplfcadvar%ExtractColumnFull(dvqg, varind(j))
             do i = 1, size(d)
@@ -923,14 +923,14 @@ module GOAT_tests
                 eabsFW = abs(dvqg - dvqFW)
                 eabsBW = abs(dvqg - dvqBW)
                 eabsC = abs(dvqG - 0.5*(dvqFW + dvqBW))
-                erelFW = eabsFW/dvqg 
-                erelBW = eabsBW/dvqg 
-                erelC = eabsC/dvqg 
-                eabsdir = eabsFW 
+                erelFW = eabsFW/dvqg
+                erelBW = eabsBW/dvqg
+                erelC = eabsC/dvqg
+                eabsdir = eabsFW
                 ereldir = eabsFW/dvqg
-            
+
                 where (eabsFW > eabsBW)
-                    eabsdir = eabsBW 
+                    eabsdir = eabsBW
                     ereldir = eabsBW/dvqg
                 end where
 
@@ -943,7 +943,7 @@ module GOAT_tests
                 !-------
                 ! Downdate values
                 valuesg(varind(j)) = valuesg(varind(j)) + d(i) ! + d to compensate for - d
-            
+
                 ! Update polygonset coordinates (no need to update plf)
                 call plfca%ps%UpdateCoordinates(valuesg(1:nvaluesg), valuesg(nvaluesg+1:2*nvaluesg))
 
@@ -962,27 +962,27 @@ module GOAT_tests
 
         ! Description
         !============
-        ! Test the different QP solvers by solving unconstrained, 
-        ! equality constrained, and inequality constrained problems. 
-        ! We take a very simple 2D quadratic problem (quadratic cost 
-        ! function, linear (in)equality constraints) with known 
-        ! solution. Normally, the equality constrained problems with 
+        ! Test the different QP solvers by solving unconstrained,
+        ! equality constrained, and inequality constrained problems.
+        ! We take a very simple 2D quadratic problem (quadratic cost
+        ! function, linear (in)equality constraints) with known
+        ! solution. Normally, the equality constrained problems with
         ! direct solver should yield the exact solution up to machine
-        ! precision (we provide the exact hessian, which is assumed 
+        ! precision (we provide the exact hessian, which is assumed
         ! by the QP - otherwise we should do SQP/use a different solver)
         !
-        ! The test problem is: 
+        ! The test problem is:
         !
-        !   min_x1,x2   0.5*( (x1 - x1*)^2 + (x2 - x2*)^2 ) 
+        !   min_x1,x2   0.5*( (x1 - x1*)^2 + (x2 - x2*)^2 )
         !                   = 0.5* ( x1^2 + x2^2) - (x1x1* + x2x2*) + c
         !   s.t.        (x1 - x1*) + (x2 - x2*) = 1
         !               (x1 - x1*) - (x2 - x2*) <= -1
         !
-        ! Note that we neglect the constant term c. 
+        ! Note that we neglect the constant term c.
         ! For the unconstrained problem, the optimum lies at x1*, x2*.
-        ! For the equality constrained problem, lambda = -0.5 and 
+        ! For the equality constrained problem, lambda = -0.5 and
         ! x1 = 0.5 + x1*, x2 = 0.5 + x2*
-        ! For the full problem, x1 = x1*, x2 = 1 + x2*, lambda = -0.5, 
+        ! For the full problem, x1 = x1*, x2 = 1 + x2*, lambda = -0.5,
         ! mu = 0.5
 
         ! Modules & the usual
@@ -992,7 +992,7 @@ module GOAT_tests
         use mod_precision
         use optmod_hessianapproximation
 
-        implicit none 
+        implicit none
 
         ! Declare variables
         !==================
@@ -1002,7 +1002,7 @@ module GOAT_tests
         integer(I8)                             :: flag, maxit, &
             verbosity
 
-        real(R8)                                :: x1s, x2s, tol 
+        real(R8)                                :: x1s, x2s, tol
         real(R8), allocatable, dimension(:)     :: gradJ, b, c, x, &
             lambda, mu, x0, lambda0, mu0, xe, lambdae, mue
         real(R8), allocatable, dimension(:, :)  :: Bdinit, jacGd, jacHd
@@ -1038,7 +1038,7 @@ module GOAT_tests
 
         ! Dense representation
         Bdinit = reshape([1, 0, 0, 1]*1.0, [2, 2])
-        Bd = ConstructHessianApproximation('no', 2, Bdinit)  
+        Bd = ConstructHessianApproximation('no', 2, Bdinit)
 
         jacGd = reshape([1, 1]*1.0, [1, 2])
         jacHd = reshape([1, -1]*1.0, [1, 2])
@@ -1061,18 +1061,18 @@ module GOAT_tests
 
         ! Solve dense
         x = x0
-        lambda = lambda0 
-        mu = mu0 
+        lambda = lambda0
+        mu = mu0
         call SolveQPDirect(Bd, gradJ, x, flag)
-        print *, 'max absolute and relative difference between ' // & 
+        print *, 'max absolute and relative difference between ' // &
             'analytical and numerical solution (dense): ', maxval(abs(x - xe)), maxval(abs(x - xe)/xe)
 
         ! Solve sparse
         x = x0
-        lambda = lambda0 
-        mu = mu0 
+        lambda = lambda0
+        mu = mu0
         call SolveQPDirect(Bsp, gradJ, x, flag)
-        print *, 'max absolute and relative difference between ' // & 
+        print *, 'max absolute and relative difference between ' // &
             'analytical and numerical solution (sparse): ', maxval(abs(x - xe)), maxval(abs(x - xe)/xe)
 
         ! Equality constrained
@@ -1080,7 +1080,6 @@ module GOAT_tests
         ! Print
         print *, ' '
         print *, 'testing equality constrained problem'
-        
 
         ! Set analytical solution
         xe = [x1s + 0.5, x2s + 0.5]
@@ -1088,23 +1087,23 @@ module GOAT_tests
 
         ! Solve dense
         x = x0
-        lambda = lambda0 
-        mu = mu0 
+        lambda = lambda0
+        mu = mu0
         call SolveQPDirect(Bd, gradJ, jacGd, b, x, lambda, flag)
-        print *, 'max absolute and relative difference between ' // & 
+        print *, 'max absolute and relative difference between ' // &
             'analytical and numerical solution (dense): ', maxval(abs(x - xe)), maxval(abs(x - xe)/xe)
-        print *, 'max absolute and relative difference between ' // & 
+        print *, 'max absolute and relative difference between ' // &
             'analytical and numerical solution lambda (dense): ', &
             maxval(abs(lambda - lambdae)), maxval(abs(lambda - lambdae)/lambdae)
 
         ! Solve sparse
         x = x0
-        lambda = lambda0 
-        mu = mu0 
+        lambda = lambda0
+        mu = mu0
         call SolveQPDirect(Bsp, gradJ, jacGsp, b, x, lambda, flag)
-        print *, 'max absolute and relative difference between ' // & 
+        print *, 'max absolute and relative difference between ' // &
             'analytical and numerical solution (sparse): ', maxval(abs(x - xe)), maxval(abs(x - xe)/xe)
-        print *, 'max absolute and relative difference between ' // & 
+        print *, 'max absolute and relative difference between ' // &
             'analytical and numerical solution lambda (sparse): ', &
             maxval(abs(lambda - lambdae)), maxval(abs(lambda - lambdae)/lambdae)
 
@@ -1121,31 +1120,31 @@ module GOAT_tests
 
         ! Solve dense
         x = x0
-        lambda = lambda0 
-        mu = mu0 
+        lambda = lambda0
+        mu = mu0
         call SolveQPDirect(Bd, gradJ, jacGd, b, jacHd, c, x, lambda, &
             mu, flag, maxit, tol, verbosity)
-        print *, 'max absolute and relative difference between ' // & 
+        print *, 'max absolute and relative difference between ' // &
             'analytical and numerical solution (dense): ', maxval(abs(x - xe)), maxval(abs(x - xe)/xe)
-        print *, 'max absolute and relative difference between ' // & 
+        print *, 'max absolute and relative difference between ' // &
             'analytical and numerical solution lambda (dense): ', &
             maxval(abs(lambda - lambdae)), maxval(abs(lambda - lambdae)/lambdae)
-        print *, 'max absolute and relative difference between ' // & 
+        print *, 'max absolute and relative difference between ' // &
             'analytical and numerical solution mu (dense): ', &
             maxval(abs(mu - mue)), maxval(abs(mu - mue)/mue)
 
         ! Solve sparse
         x = x0
-        lambda = lambda0 
-        mu = mu0 
+        lambda = lambda0
+        mu = mu0
         call SolveQPDirect(Bsp, gradJ, jacGsp, b, jacHsp, c, x, lambda, &
             mu, flag, maxit, tol, verbosity)
-        print *, 'max absolute and relative difference between ' // & 
+        print *, 'max absolute and relative difference between ' // &
             'analytical and numerical solution (sparse): ', maxval(abs(x - xe)), maxval(abs(x - xe)/xe)
-        print *, 'max absolute and relative difference between ' // & 
+        print *, 'max absolute and relative difference between ' // &
             'analytical and numerical solution lambda (sparse): ', &
             maxval(abs(lambda - lambdae)), maxval(abs(lambda - lambdae)/lambdae)
-        print *, 'max absolute and relative difference between ' // & 
+        print *, 'max absolute and relative difference between ' // &
             'analytical and numerical solution mu (dense): ', &
             maxval(abs(mu - mue)), maxval(abs(mu - mue)/mue)
 
@@ -1184,8 +1183,8 @@ module GOAT_tests
         rda2 = ConstructRealDynamicArray(val+2.5)
 
         ! Print
-        print *, 'rda1 array values: ', rda1%val 
-        print *, 'rda2 array values: ', rda2%val 
+        print *, 'rda1 array values: ', rda1%val
+        print *, 'rda2 array values: ', rda2%val
 
         ! Sum arrays
         rda3 = rda1 + rda2
@@ -1209,7 +1208,6 @@ module GOAT_tests
         ! Remove array values
 
 
-        
 
         ! Finalize
         !=========
@@ -1222,22 +1220,22 @@ module GOAT_tests
 
         ! Description
         !============
-        ! Test contour tracing algorithm for simple contours. Data is 
+        ! Test contour tracing algorithm for simple contours. Data is
         ! written out in polygon format, to be plotted using python.
 
         ! Modules
         !========
-        use mod_precision 
+        use mod_precision
         use mod_constants
         use mod_plotter
         use mod_sort
-        
+
         ! Declare variables
         !==================
         ! Auxiliary
         integer(I8), allocatable        :: int_a_rng(:), temp(:), &
             ind(:)
-        integer(I8)                     :: n 
+        integer(I8)                     :: n
 
         real(R8), allocatable           :: real_a_rng(:), real_a_smallval(:)
 
@@ -1248,17 +1246,17 @@ module GOAT_tests
 
         ! Construct random vector of integers
         allocate(real_a_rng(n), int_a_rng(n), ind(n), real_a_smallval(n))
-        call random_number(real_a_rng) 
+        call random_number(real_a_rng)
         int_a_rng = floor(real_a_rng*n)
         real_a_smallval = 1e-13
 
-        ! Print 
-        print *, 'Unsorted integer array: ', int_a_rng 
+        ! Print
+        print *, 'Unsorted integer array: ', int_a_rng
         print *, 'Unsorted real array: ', real_a_rng
 
         ! Sort
         !=====
-        temp = int_a_rng 
+        temp = int_a_rng
         call Sort(int_a_rng, ind=ind)
         call Sort(real_a_rng)
         call Sort(real_a_smallval)
@@ -1266,7 +1264,7 @@ module GOAT_tests
         ! Print
         !======
         print *, 'Sorted integer array: ', int_a_rng
-        print *, 'Indices: ', ind 
+        print *, 'Indices: ', ind
         print *, 'Sorted array by indexing', temp(ind)
         print *, 'Sorted real array: ', real_a_rng
         print *, 'Sorted small value array: ', real_a_smallval
@@ -1278,30 +1276,30 @@ module GOAT_tests
 
         ! Description
         !============
-        ! Test contour tracing algorithm for simple contours. Data is 
+        ! Test contour tracing algorithm for simple contours. Data is
         ! written out in polygon format, to be plotted using python.
 
         ! Modules
         !========
-        use mod_precision 
+        use mod_precision
         use mod_contour2D
         use mod_constants
         use mod_plotter
         use mod_dynamicarrays
-        
+
         ! Declare variables
         !==================
         ! Auxiliary
-        real(R8)                        :: Lx, Ly 
+        real(R8)                        :: Lx, Ly
         real(R8), allocatable           :: xgv(:), ygv(:), xg(:), yg(:), &
             vtest(:, :), cval(:), ea(:), xw(:), yw(:)
         integer(I8)                     :: nx, ny
         integer(I8), allocatable        :: order(:), eai(:)
         type(ContourUDT), allocatable   :: contours(:)
-        type(RealDynamicArrayUDT)       :: xc, yc 
+        type(RealDynamicArrayUDT)       :: xc, yc
 
         ! Loop
-        integer(I8)                     :: k 
+        integer(I8)                     :: k
 
         ! Initialize
         !===========
@@ -1309,7 +1307,7 @@ module GOAT_tests
         Lx = 1
         Ly = 1
         nx = 101
-        ny = 201 
+        ny = 201
         xgv = real([(k, k = 0, nx-1)], kind=R8)*(Lx/real((nx-1), kind=R8))
         ygv = real([(k, k = 0, ny-1)], kind=R8)*(Ly/real((ny-1), kind=R8))
 
@@ -1342,7 +1340,7 @@ module GOAT_tests
         do k = 2, size(contours)
             call xc%Append([nanval_R8(), contours(k)%x])
             call yc%Append([nanval_R8(), contours(k)%y])
-        end do 
+        end do
         xw = xc%Get()
         yw = yc%Get()
         call Write2DPolygonData(xw, yw, 'testcontourtracing')
@@ -1361,37 +1359,37 @@ module GOAT_tests
 
         ! Modules
         !========
-        use mod_precision 
+        use mod_precision
         use mod_contour2D
         use mod_constants
         use mod_plotter
         use mod_dynamicarrays
-        use goatmod_types 
-        use ggmod_topology2D 
+        use goatmod_types
+        use ggmod_topology2D
         use goatmod_userinput
         use ggmod_gridgeneration2D
-        
+
         ! Declare variables
         !==================
         ! Auxiliary
-        character(:), allocatable       :: meth 
-        real(R8)                        :: Lx, Ly 
+        character(:), allocatable       :: meth
+        real(R8)                        :: Lx, Ly
         real(R8), allocatable           :: xgv(:), ygv(:), xg(:), yg(:), &
             vtest(:, :), cval(:), ea(:), xw(:), yw(:), xp(:), yp(:)
         integer(I8)                     :: nx, ny
-        integer(I8), allocatable        :: order(:) 
+        integer(I8), allocatable        :: order(:)
         type(ContourUDT), allocatable   :: contours(:)
         class(ContourTracerUDT), allocatable    :: fieldtracer, vesseltracer
-        type(RealDynamicArrayUDT)       :: xc, yc 
-        type(magneticFieldUDT)          :: magneticField 
-        type(VesselUDT)                 :: vessel 
-        type(TopomeshUDT)               :: topomesh 
+        type(RealDynamicArrayUDT)       :: xc, yc
+        type(magneticFieldUDT)          :: magneticField
+        type(VesselUDT)                 :: vessel
+        type(TopomeshUDT)               :: topomesh
         type(PLF2DClosedExactOptionsUDT)    :: plfoptions
         type(TopomeshOptionsUDT)        :: topoptions
         type(GGOptionsUDT)              :: ggoptions
 
         ! Loop
-        integer(I8)                     :: k 
+        integer(I8)                     :: k
 
         ! Initialize
         !===========
@@ -1403,7 +1401,7 @@ module GOAT_tests
         Lx = 1
         Ly = 1
         nx = 101
-        ny = 201 
+        ny = 201
         xgv = real([(k, k = 0, nx-1)], kind=R8)*(Lx/real((nx-1), kind=R8))
         ygv = real([(k, k = 0, ny-1)], kind=R8)*(Ly/real((ny-1), kind=R8))
 
@@ -1437,8 +1435,8 @@ module GOAT_tests
         ! Construct topological mesh
         !===========================
         call ConstructTopologicalMesh(vessel, magneticField, topoptions, &
-            topomesh, fieldtracer, vesseltracer)      
-            
+            topomesh, fieldtracer, vesseltracer)
+
         ! Construct grid
         !===============
         call GenerateUnstructuredAlignedGrid(topomesh, magneticField, &
@@ -1455,10 +1453,10 @@ module GOAT_tests
 
         ! Description
         !============
-        ! Create a random sparse matrix with number of rows equal to 
-        ! nrow (analogously ncol) and a number of nonzeros nnz. All is 
+        ! Create a random sparse matrix with number of rows equal to
+        ! nrow (analogously ncol) and a number of nonzeros nnz. All is
         ! randomly generated using the built in function random_number.
-        ! The values are distributed over the interval [-1, 1]. 
+        ! The values are distributed over the interval [-1, 1].
 
         ! Modules
         !========
@@ -1467,8 +1465,8 @@ module GOAT_tests
         ! Declare
         !========
         ! Arguments
-        type(MySparseUDT)       :: A 
-        integer(I8), intent(in) :: nrow, ncol, nnz 
+        type(MySparseUDT)       :: A
+        integer(I8), intent(in) :: nrow, ncol, nnz
 
         ! Auxiliary
         real(R8)                :: temp(1:nnz), val(1:nnz)
@@ -1476,7 +1474,7 @@ module GOAT_tests
 
         ! Test
         !======
-        if (allocated(A%val)) then 
+        if (allocated(A%val)) then
             call A%Deallocate()
         end if
 
@@ -1495,19 +1493,19 @@ module GOAT_tests
         val = temp*2-1 ! to have some zero and nonzero values
 
         ! Assign
-        A%nrow = nrow 
+        A%nrow = nrow
         A%ncol = ncol
-        A%nval = nnz 
-        A%row = row 
-        A%col = col 
-        A%val = val 
+        A%nval = nnz
+        A%row = row
+        A%col = col
+        A%val = val
 
 
 
     end subroutine
 
 
-end module 
+end module
 
 
 
@@ -1516,16 +1514,13 @@ program Tests
 
     ! Description
     !============
-    ! Tests for the structured 2D interpolant. We test for a given 
-    ! analytical field whether it is correctly represented again by 
+    ! Tests for the structured 2D interpolant. We test for a given
+    ! analytical field whether it is correctly represented again by
     ! the structured polynomial interpolant
 
-    use GOAT_tests 
+    use GOAT_tests
 
     call RunAllTests()
 
 
 end program Tests
-
-
-                     

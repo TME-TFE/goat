@@ -128,9 +128,9 @@ shapeopt_debug: shapeopt
 #shapeopt_solps: $(addprefix $(BUILDDIR)/,$(SHAPEOPTSOLPS_TARGETS) ) $(BUILDDIR)/shapeopt_solps.o
 #	-mv -f *.o $(BUILDDIR);
 #	-mv -f *.mod $(BUILDDIR);
-#	$(FC) $(LFLAGS) -o $(BUILDDIR)/shapeopt_solps $(BUILDDIR)/*.o $(B25LIBBPATH)/adStack.o \
-	 $(B25LIBBPATH)/b2mod_cdf.o $(LAPACKPATH) $(BLASPATH) $(UMFPACKPATH) \
-	 -lcxsparse $(SUITESPARSEPATH) -I src/Clayer/Include  -I$(B25LIBPATH) -L$(B25LIBPATH) -l:libb2.a -L$(B25LIBPATH) -l:libb2.a -lnetcdf $(LD_NETCDF)
+#	$(FC) $(LFLAGS) -o $(BUILDDIR)/shapeopt_solps $(BUILDDIR)/*.o $(B25LIBPATH)/adStack.o \
+	 $(B25LIBPATH)/b2mod_cdf.o $(LAPACKPATH) $(BLASPATH) $(UMFPACKPATH) \
+	 -lcxsparse $(SUITESPARSEPATH) -I src/Clayer/Include  -I$(B25LIBPATH) -L$(B25LIBPATH) -l:libb2.a -lnetcdf $(LD_NETCDF)
 #	rm $(BUILDDIR)/ShapeOptimization.o;
 #	cp $(BUILDDIR)/shapeopt_solps.exe ./executables/.
 

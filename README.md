@@ -16,15 +16,16 @@ To install goat, you need a Unix-like environment and the tcsh shell. Additional
 - SuiteSparse (see https://github.com/DrTimothyAldenDavis/SuiteSparse)
 - OpenBLAS
 
-Using Ubuntu, one can use the package manager to install these libraries (e.g. `sudo apt install libopenblas-dev` for OpenBLAS, `sudo apt install libsuitesparse-dev`, `sudo apt install gfortran`)
+Using Ubuntu, one can use the package manager to install these libraries (e.g. `sudo apt install libopenblas-dev` for OpenBLAS, `sudo apt install libsuitesparse-dev`, `sudo apt install gfortran`).
+
 To run the Python visualization scripts, a Python installation with additional packages (and their dependencies) is required:
 - Matplotlib
 - Numpy
 - Shapely
 
 Having these dependencies installed, the code is installed as follows:
-- open a clean tcsh terminal
-- clone the git repository
+- open a clean *tcsh* terminal
+- clone the Git repository
 - `cd` into the top folder after cloning and execute `source setup.csh`. This will load in the necessary environment variables for compilation.
 - To compile goat, execute `make goat` (or `make goat_debug`) to compile the executable name `goat.exe` and `goat_debug.exe`. After compilation, these should be found in the executables again.
 - To link properly to the newly compiled executables, rerun `source setup.csh` again
@@ -39,7 +40,7 @@ To use goat, first compile it (see section Installation) to retrieve the goat ex
 - go to the example case (i.e. execute `cd ./Examples/ASDEX`)
 - run the example case by executing `goat.exe` or `goat_debug.exe`
 - After succesful execution, a `traduit.out.b2us` file is produced, along with other data in `./output`. The grid is stored in the `traduit.out.b2us` file. For SOLPS, this is the input for the `b2ag` preprocessor (along with a `b2ag.dat` file)
-- To visualize results, one can execute `pggoutput` in the terminal, which will read in the grid and additional data in the `output` folder (this may fail if non-standard names are used or if Python packages were not installed correctly)
+- To visualize results, one can execute `pggoutput` (from the `Examples/ASDEX` directory) in the terminal, which will read in the grid and additional data in the `output` folder (this may fail if non-standard names are used or if Python packages were not installed correctly or are missing)
 
 To create a new case, create a new folder called `Runs` on the same level as `src`. This folder will be ignored by the current .gitignore settings. To run goat, only three inputs are required:
 - a `GOAToptions.dat` file containing the user-specified options (best to copy-paste from an existing example)

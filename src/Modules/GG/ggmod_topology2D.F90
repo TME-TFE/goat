@@ -3449,8 +3449,13 @@ module ggmod_topology2D
 
         ! Issue messages
         if (any(isclosedface)) then 
-            print *, 'SplitTopologicalMeshFaces: ', nncf, &
-                ' closed faces detected, splitting up ...'
+            if (nncf > 1) then
+                print *, 'SplitTopologicalMeshFaces: ', nncf, &
+                    ' closed faces detected, splitting up ...'
+            else
+                print *, 'SplitTopologicalMeshFaces: ', nncf, &
+                    ' closed face detected, splitting up ...'
+            endif
         end if 
         if (any(isduplicateface)) then 
             print *, 'SplitTopologicalMeshFaces: ', nndf, &

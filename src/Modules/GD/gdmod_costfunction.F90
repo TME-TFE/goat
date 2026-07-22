@@ -1125,7 +1125,9 @@ module gdmod_costfunction
 
         ! Scale
         J = lambda*J
-        Jv = lambda*Jv
+        do k = 1, size(Jv,1)
+            Jv(k) = lambda*Jv(k)
+        end do
 
         ! Compute gradient
         !=================
@@ -2329,7 +2331,9 @@ module gdmod_costfunction
 
         ! Scale
         J = lambda*J
-        Jv = lambda*Jv
+        do k = 1, size(Jv,1)
+            Jv(k) = lambda*Jv(k)
+        end do
 
         ! Precompute values
         !==================
@@ -3663,7 +3667,9 @@ module gdmod_costfunction
 
         ! Scale
         J = lambda*J
-        Jv = lambda*Jv
+        do i = 1, size(Jv,1)
+            Jv(i) = lambda*Jv(i)
+        end do
 
         ! Compute derivatives
         !====================
@@ -4343,7 +4349,9 @@ module gdmod_costfunction
 
         ! Scale
         J = lambda*J
-        Jv = lambda*Jv
+        do i = 1, size(Jv,1)
+            Jv(i) = lambda*Jv(i)
+        end do
 
         ! Compute derivatives
         !====================
@@ -5106,7 +5114,9 @@ module gdmod_costfunction
 
         ! Scale
         J = lambda*J
-        Jv = lambda*Jv
+        do i = 1, size(Jv,1)
+            Jv(i) = lambda*Jv(i)
+        end do
 
         ! Compute derivatives
         !====================
@@ -6095,7 +6105,9 @@ module gdmod_costfunction
         allocate(issepvert(grid%vert%ntot))
         issepvert = .false.
         do i = 1, nxpind 
-            where (fieldlineID == fieldlineID(xpind(i))) issepvert = .true.
+            do j = 1, grid%vert%ntot
+                if (grid%vert%fieldlineID(j) == grid%vert%fieldlineID(xpind(i))) issepvert(j) = .true.
+            end do
         end do 
         allocate(tvID(count(issepvert)))
         tvID = xpind ! pack([(k, k = 1, grid%vert%ntot)], issepvert)
@@ -6121,7 +6133,9 @@ module gdmod_costfunction
 
         ! Set desired bias to one at separatrix nodes
         do i = 1, nxpind 
-            where (fieldlineID == fieldlineID(xpind(i))) b0v = 1
+            do j = 1, grid%vert%ntot
+                if (grid%vert%fieldlineID(j) == grid%vert%fieldlineID(xpind(i))) b0v(j) = 1
+            end do
         end do
 
         ! Initialize pairs too big
@@ -6340,7 +6354,9 @@ module gdmod_costfunction
 
         ! Scale
         J = lambda*J
-        Jv = lambda*Jv
+        do i = 1, size(Jv,1)
+            Jv(i) = lambda*Jv(i)
+        end do
 
         ! Compute gradient
         !=================

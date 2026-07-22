@@ -32,12 +32,12 @@ include config.mk
 
 # Echo the different environment variables 
 $(info % ===========================)
-$(info % Executing the goat makefile)
+$(info % Executing the goat Makefile)
 $(info % ===========================)
 $(info % )
 $(info % General environment variables)
 $(info % -----------------------------)
-$(info % fortran compiler: $(FC))
+$(info % Fortran compiler: $(FC))
 $(info % C compiler: $(CC))
 ifdef USE_MPI 
 $(info % Running with MPI)
@@ -46,10 +46,10 @@ $(info % Build directory: $(BUILDDIR))
 $(info % )
 $(info % SOLPS specific environment variables)
 $(info % ------------------------------------)
-$(info % running at host: $(HOST_NAME))
-$(info % solps path: $(SOLPSTOP))
+$(info % Running at host: $(HOST_NAME))
+$(info % SOLPS path: $(SOLPSTOP))
 $(info % B2.5 build path: $(BUILDDIR))
-$(info % B2.5 libary path: $(B25LIBPATH))
+$(info % B2.5 library path: $(B25LIBPATH))
 
 ## %===================================================================%
 ## %                                                                   %
@@ -59,11 +59,11 @@ $(info % B2.5 libary path: $(B25LIBPATH))
 ## Construction of directories
 ## %==========================
 ## CREATE_BUILDDIR: construct build directory based on BUILDDIR environment variable
-CREATE_BUILDDIR:= $(shell mkdir ./builds)
-CREATE_BUILDDIR:= $(shell mkdir ./builds/$(BUILDDIR))
+CREATE_BUILDDIR:= $(shell mkdir -p ./builds)
+CREATE_BUILDDIR:= $(shell mkdir -p ./builds/$(BUILDDIR))
 
 ## CREATE_EXEDIR: construct executable directory 
-CREATE_EXEDIR:= $(shell mkdir ./executables)
+CREATE_EXEDIR:= $(shell mkdir -p ./executables)
 
 BUILDDIR :=./builds/$(BUILDDIR)
 
@@ -115,7 +115,7 @@ shapeopt: $(addprefix $(BUILDDIR)/, $(SHAPEOPT_TARGETS) ) $(BUILDDIR)/shapeopt.o
 ifdef DOSOLPS
 	$(FC) $(LFLAGS) -o $(BUILDDIR)/$(EXEC_NAME) $(BUILDDIR)/*.o $(B25LIBPATH)/adStack.o \
 	 $(B25LIBPATH)/b2mod_cdf.o $(B25LIBPATH)/smax.o $(B25LIBPATH)/smin.o $(LAPACKPATH) $(BLASPATH) $(UMFPACKPATH) $(DMUMPS_LPATH) \
-	 -lcxsparse $(SUITESPARSEPATH) -I src/Clayer/Include  -I$(B25LIBPATH) -L$(B25LIBPATH) -l:libb2.a -L$(B25LIBPATH) -l:libb2.a -lnetcdf $(LD_NETCDF)
+	 -lcxsparse $(SUITESPARSEPATH) -I src/Clayer/Include -I$(B25LIBPATH) -L$(B25LIBPATH) -l:libb2.a -lnetcdf $(LD_NETCDF)
 else
 	$(FC) $(LFLAGS) -o $(BUILDDIR)/$(EXEC_NAME) $(BUILDDIR)/*.o $(LAPACKPATH) $(BLASPATH) $(UMFPACKPATH) $(DMUMPS_LPATH) -lcxsparse \
 	$(SUITESPARSEPATH) -I src/Clayer/Include
@@ -169,7 +169,7 @@ $(BUILDDIR)/Constants: $(CONSTANTS_FILES)
 $(BUILDDIR)/General: $(GENERAL_FILES)
 	$(FC) $(CFLAGS) $^ -I$(BUILDDIR) $(DMUMPS_IPATH)
 	touch $(BUILDDIR)/General
-	
+
 ## Modules			: compile modules
 $(BUILDDIR)/Modules_goat: $(MODULE_FILES_GOAT)
 	$(FC) $(CFLAGS) $^ -I$(BUILDDIR) 
@@ -274,7 +274,7 @@ cleanbuilds:
 .PHONY: deepclean 
 deepclean: cleanbuilds clean 
 
-	
+
 ## help			: print out documentation
 # Help - prints out all the ## statements
 .PHONY : help 

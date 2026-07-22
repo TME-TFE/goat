@@ -390,12 +390,12 @@ module gdmod_utility_optimization
         allocate(isuniqueID(vert%ntot), tvec(vert%ntot))
         isuniqueID(:) = .false.
         do i = 1, maxval(ID)
-            tvec = ID == i 
+            tvec = grid%vert%fieldlineID == i
             if (count(tvec) == 1) then 
                 where (tvec) isuniqueID = .true.
             end if 
         end do
-        tv = pack([(i, i=1, vert%ntot)], isvesselvertex .and. (isuniqueID .or. ID == 0))
+        tv = pack([(i, i=1, vert%ntot)], isvesselvertex .and. (isuniqueID .or. grid%vert%fieldlineID == 0))
 
         ! Check vertex neighbours
         do i = 1, size(tv, 1)

@@ -16042,10 +16042,10 @@ module ggmod_topology2D
 
         ! Auxiliary
         logical                                 :: issinglenull, &
-            isdoublenull, islinear
+            isdoublenull, islinear, islimiter
         integer(I8)                             :: nxp, nop, nwgc, nsp, &
-            ncc
-        integer(I8), allocatable, dimension(:)  :: xp, op, wgc, sp, cc
+            ncc, ntp
+        integer(I8), allocatable, dimension(:)  :: xp, op, wgc, sp, cc, tp
 
         ! Initialize
         !===========
@@ -16064,6 +16064,10 @@ module ggmod_topology2D
         sp = topomesh%GetStrikePointIDs()
         nsp = size(sp)
 
+        ! Closed contour tangency points
+        tp = topomesh%GetClosedContourTangencyPointIDs()
+        ntp = size(tp)
+
         ! Get all wide grid cells
         wgc = topomesh%GetWideGridCellIDs()        
         nwgc = size(wgc)
@@ -16076,13 +16080,26 @@ module ggmod_topology2D
         issinglenull = .true.
         isdoublenull = .true.
         islinear     = .true. 
+        islimiter    = .true.
 
         ! Linear case
         !============
         ! X-point and O-point checks
-        if (nxp /= 0 .or. nop /= 0) then 
+        if (nxp /= 0 .or. nop /= 0 .or. ntp /= 0 .or. ncc /= 0) then
             islinear = .false. 
         end if 
+
+        ! Limiter case
+        !=============
+        ! A limiter mesh has no X/O points, but it does have closed-flux
+        ! core topology. In practice this appears either as closed-contour
+        ! tangency points, or as core cells bounded by the core flux surface.
+        if (nxp /= 0 .or. nop /= 0) then
+            islimiter = .false.
+        end if
+        if (ntp == 0 .and. ncc == 0) then
+            islimiter = .false.
+        end if
 
         ! Single null
         !============        
@@ -16135,13 +16152,15 @@ module ggmod_topology2D
         ! Determine flag
         !===============
         ! Sanity checks
-        if (count([issinglenull, isdoublenull, islinear]) > 1) then 
+        if (count([issinglenull, isdoublenull, islinear, islimiter]) > 1) then
             ! Probably we missed something in the definition then
             print *, 'IdentifyTopologicalMeshType: multiple topologies ' // & 
                 'appear valid, this is likely a bug. Setting flag to ' // & 
                 'general flag...'
         elseif (islinear) then 
             TMlabel = TMTopL
+        elseif (islimiter) then
+            TMlabel = TMTopLM
         elseif (issinglenull) then 
             TMlabel = TMTopSN
         elseif (isdoublenull) then 

@@ -1888,7 +1888,7 @@ def ReadGridFromB2fgmtryus(filepath):
     # Read version to determine what data to read in 
     temp = alllines[0].split(); temp = temp[0]
     version = temp[7:17]
-    topodataversion = '03.002.001'
+    topodataversion = '03.002.002'
 
     if version >= topodataversion:
         hasTopologicalData = True

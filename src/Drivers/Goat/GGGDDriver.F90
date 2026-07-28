@@ -155,7 +155,7 @@ subroutine GGGDDriver(goatoptions)
     print *, 'GGGDDriver: facelabelsGG: ', facelabelsGD
 
     ! Recompute topological data from grid for new face labels
-    call ComputeTopologicalData(grid, topomesh)
+    call ComputeTopologicalData(grid, topomesh, ggoptions)
 
     ! Grid data
     call WriteGOAT(goatoptions, grid, magneticField, environment)
@@ -174,7 +174,7 @@ subroutine GGGDDriver(goatoptions)
         ggoptions, 'solps')
 
     ! Recompute topological data from grid for new face labels
-    call ComputeTopologicalData(grid, topomesh)
+    call ComputeTopologicalData(grid, topomesh, ggoptions)
 
     ! Grid data
     call WriteGOAT(goatoptions, grid, magneticField, environment)

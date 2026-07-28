@@ -988,7 +988,8 @@ module goatmod_userinput
         ! Label translation options:
         !   - structurebasedlabels:     base labels on structure IDs 
         !   - forceSOLPStopology:       force certain topology for region translation etc
-        !   - SOLPStopology:            desired topology ('linear','single_null', 'double_null')
+        !   - SOLPStopology:            desired topology ('general', 'linear',
+        !                               'limiter', 'single_null', 'double_null')
 
         ! Diagnostics
         ! - dogriddiagnostics   run grid diagnostics. Will be time consuming!

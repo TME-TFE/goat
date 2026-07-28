@@ -1392,7 +1392,7 @@ module goatmod_types
 
         ! Check the version to determine what to read in 
         readTopologicalData = .false. 
-        if (chardummy(8:17) >= '03.002.001') then 
+        if (chardummy2(8:17) >= '03.002.002') then 
             ! Topological data should be present
             readTopologicalData = .true.
         end if 

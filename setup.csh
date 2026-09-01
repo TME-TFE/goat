@@ -33,6 +33,9 @@ echo '/_/  \____/\____/_/_.___/\____/_/|_|                                      
 echo '                                                                          '
 echo ' '
 
+( ps -p $$ | grep -Eq "tcsh|csh" ) || ( echo ; echo "*** Use tcsh to source setup.csh! *** " ; echo ; return 1 2> /dev/null ; exit 1 )
+
+
 # Set goat top directory
 setenv LAST_COMMAND `echo $_`
 if (`echo ${LAST_COMMAND}` == "") then
@@ -73,10 +76,15 @@ else
   case "*LOCAL":
     setenv HOST_NAME UNKNOWN
     breaksw
+  case "DARWIN":
+    setenv HOST_NAME ${iamat}
+    echo "-> GNU sed required, therefore aliasing gsed to sed"
+    alias sed gsed
   default:
     setenv HOST_NAME ${iamat}
   endsw
 endif
+
 
 # Load 
 set setup=${GOATTOP}/SETUP/setup.csh.${HOST_NAME}.${COMPILER}
@@ -98,7 +106,7 @@ if (-s ${GOATTOP}/SETUP/setup.csh.${HOST_NAME}.${COMPILER}.local) then
   source ${GOATTOP}/SETUP/setup.csh.${HOST_NAME}.${COMPILER}.local
 endif
 
-# Set some aliases 
+# Set some aliases
 alias gtop "cd ${GOATTOP}"
 alias pgdinput "python3 ${GOAT_VISUALIZATION}/VisualizeGDInput.py"
 alias pgdoutput "python3 ${GOAT_VISUALIZATION}/VisualizeGDOutput.py"

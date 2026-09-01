@@ -33,6 +33,8 @@ echo '/_/  \____/\____/_/_.___/\____/_/|_|                                      
 echo '                                                                          '
 echo ' '
 
+( ps -p $$ | grep -Eq "tcsh|csh" ) || ( echo ; echo "*** Use tcsh to source setup.csh! *** " ; echo ; return 1 2> /dev/null ; exit 1 )
+
 # Set goat top directory
 setenv LAST_COMMAND `echo $_`
 if (`echo ${LAST_COMMAND}` == "") then

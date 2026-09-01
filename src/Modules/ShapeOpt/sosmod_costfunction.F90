@@ -9,41 +9,41 @@
 ! This module contains the cost function implementation for shape
 ! optimization with SOLPS. It assumes that (at least) the b25 library
 ! with cost function (gradient) evaluation routines is available and
-! linked to. It also makes use of the types defined in b2mod. 
+! linked to. It also makes use of the types defined in b2mod.
 
 
 module sosmod_costfunction
-    
+
     ! Initialize
     !============
     ! Load modules
     use b2mod_switches_diff
     use b2us_map_diff
-    use b2mod_ad_diff, only : nncf 
+    use b2mod_ad_diff, only : nncf
     use b2mod_main_diff, only : b2mn_init_b
     use b2us_geo_diff
     use b2us_plasma_diff
     !use b2mod_agdr_diff, only : b2agdr_opt, b2agdr_opt_b, b2agdr_init, &
     !    b2agdr_init_b, b2agdr_write, b2agdr_fin, b2agdr_fin_b
     use b2mod_par_opt_diff
-    use somod_costfunction 
+    use somod_costfunction
     use gdmod_optimizationengine
     use b2mod_costfunction
     use b2mod_state_constr_diff
     use b2mod_costfunction_data
 
-    ! Rename precision ... 
+    ! Rename precision ...
     use b2mod_types, only: R8_B25 => R8
     use mod_precision, only: R8_G => R8, I8_G => I8
 
-    
 
-    
+
+
 
     ! The usual
     implicit none
     save
-    public 
+    public
 
 
     !==================================================================!
@@ -60,42 +60,42 @@ module sosmod_costfunction
 
         ! Description
         !============
-        ! This cost function is a reduced cost function that is 
-        ! fully based on a cost function definition from SOLPS. It is 
-        ! assumed that there is a routine called 
-        ! 'EvaluateCostFunctionGradient' that returns the cost 
+        ! This cost function is a reduced cost function that is
+        ! fully based on a cost function definition from SOLPS. It is
+        ! assumed that there is a routine called
+        ! 'EvaluateCostFunctionGradient' that returns the cost
         ! function value and its gradient. Our routines wrap around it
         ! and this UDT defines the required data structures from SOLPS
-        ! to initialize, evaluate and update the cost function. 
+        ! to initialize, evaluate and update the cost function.
 
         ! Note: we follow the same naming convention as defned in the
         ! SOLPS routines for (hopefully) clarity
 
         ! Fields
         type(geometry)          :: g ! geometry and grid
-        type(geometry_diff)     :: gb ! geometry derivatives 
+        type(geometry_diff)     :: gb ! geometry derivatives
         type(b2state)           :: st ! state
         type(b2state_diff)      :: stb ! state derivatives
-        type(b2stateext)        :: state_ext 
+        type(b2stateext)        :: state_ext
         type(b2stateext_diff)   :: state_extb
-        type(b2average)         :: state_avg 
+        type(b2average)         :: state_avg
         type(b2average)         :: state_avgb
-        type(switches)          :: switch 
-        type(switches_diff)     :: switchb 
-        type(mapping)           :: mpg 
+        type(switches)          :: switch
+        type(switches_diff)     :: switchb
+        type(mapping)           :: mpg
         type(mapping_diff)      :: mpgb
         type(state_constraint)  :: stc
-        type(state_constraint_diff)     :: stcb 
+        type(state_constraint_diff)     :: stcb
         type(costfunction_data)     :: cf_data
 
-    contains 
+    contains
 
         ! Initialization
         procedure :: Initialize             => InitializeCostfunctionSOLPS
 
         ! Evaluation
         procedure :: Evaluate               => EvaluateCostFunctionSOLPS
-        
+
     end type
 
     ! Goat and SOLPS reduced cost function
@@ -105,15 +105,15 @@ module sosmod_costfunction
         !============
         ! This cost function type inherits from the goat reduced
         ! optimization cost function and should be used to incorporate
-        ! the SOLPS cost function together with the goat. Additional 
+        ! the SOLPS cost function together with the goat. Additional
         ! cost function contributions from the purely goat side may be
-        ! added in the future. Here, we need to overwrite the GR 
+        ! added in the future. Here, we need to overwrite the GR
         ! initialize and evaluation routines.
 
         ! Additional fields
-        type(CostFunctionSOLPSUDT)      :: cfvsolps 
-        
-    contains 
+        type(CostFunctionSOLPSUDT)      :: cfvsolps
+
+    contains
 
         ! Initialization
         procedure :: Initialize         => InitializeCostFunctionGSR
@@ -144,12 +144,12 @@ module sosmod_costfunction
         !============
         ! Initialize the SOLPS cost function. This is simply a wrapper
         ! for the InitializeCostFunction.F90 routine declared on the
-        ! SOLPS side. 
+        ! SOLPS side.
 
         ! Declare variables
         !==================
         ! Arguments
-        class(CostFunctionSOLPSUDT)         :: costfunction 
+        class(CostFunctionSOLPSUDT)         :: costfunction
 
         ! Call initializer
         !=================
@@ -159,8 +159,8 @@ module sosmod_costfunction
             costfunction%stb, costfunction%state_ext, costfunction%state_extb, &
             costfunction%state_avg, costfunction%state_avgb, &
             costfunction%stc, costfunction%stcb, costfunction%cf_data)
-    
-    end subroutine 
+
+    end subroutine
 
      ! Evaluation
     subroutine EvaluateCostFunctionSOLPS(costfunction, J, gradJ, dogradient)
@@ -169,26 +169,26 @@ module sosmod_costfunction
         !============
         ! Evaluate the SOLPS cost function and its gradient (hessian is
         ! not returned). The gradient is assumed to be with respect to
-        ! the grid coordinates (vxx, vxy), the psi values at the 
+        ! the grid coordinates (vxx, vxy), the psi values at the
         ! vertices (vxfpsi), the derivatives of the psi values at the
-        ! vertices (vxbx, vxby) and the ffbz value. This routine is a 
+        ! vertices (vxbx, vxby) and the ffbz value. This routine is a
         ! wrapper for the EvaluateCostFunctionGradient routine
 
         ! Use modules
         !============
-        
+
 
         ! Declare variables
         !==================
         ! Arguments
-        class(CostFunctionSOLPSUDT)                 :: costfunction 
-        real(R8_G), intent(out)                  :: J 
+        class(CostFunctionSOLPSUDT)                 :: costfunction
+        real(R8_G), intent(out)                  :: J
         real(R8_G), allocatable, intent(out)     :: gradJ(:)
         logical, intent(in)                      :: dogradient
 
         ! Auxiliary
         real(R8_B25)                        :: J1(nncf), J1b(nncf)
-        
+
 
         ! Initialize
         !===========
@@ -215,7 +215,7 @@ module sosmod_costfunction
         !=========
         ! Call routine
         if (dogradient) then
-            ! Evaluate the gradient as well 
+            ! Evaluate the gradient as well
             call EvaluateCostFunctionGradient(switch, switchb, g, gb, &
                 mpg, mpgb, st, stb, state_ext, state_extb, state_avg, &
                 state_avgb, J1, J1b, stc, stcb, cf_data)
@@ -233,8 +233,8 @@ module sosmod_costfunction
             J = real(J1(1), kind=R8_G) ! assumed first entry is total cost function
             gradJ = 0*real([g%vxx, g%vxy, g%vxfpsi, g%vxbx, g%vxby, &
                 g%vxffbz], kind=R8_G)
-        end if 
-        
+        end if
+
         ! Housekeeping
         !=============
         end associate
@@ -251,9 +251,9 @@ module sosmod_costfunction
         ! Description
         !============
         ! Initialize the goat reduced cost function. This basically means
-        ! initializing the goat engine and the costfunction type. The 
-        ! cost function is then allocated to the correct type and 
-        ! initialized here as well. 
+        ! initializing the goat engine and the costfunction type. The
+        ! cost function is then allocated to the correct type and
+        ! initialized here as well.
 
         ! Arguments
         class(CostfunctionGSRUDT)           :: costfunction
@@ -265,7 +265,7 @@ module sosmod_costfunction
         ! Set the input filepaths for the driver
         costfunction%goatengine%inputfilepath = goat%inputfilepath
         costfunction%goatengine%inputfileprefix = 'gd.'
-        
+
         ! Initialize the driver
         call costfunction%goatengine%SetupOptimizationDriver()
 
@@ -297,17 +297,17 @@ module sosmod_costfunction
             costfunction%costfunction%type = 'SOFA'
 
         case ('general')
-                
+
             ! General cost function
             allocate(CostFunctionGeneralSOUDT::costfunction%costfunction)
 
             ! Set type
             costfunction%costfunction%type = 'general'
 
-        case default 
+        case default
 
             ! Throw error
-            call gdErrorHandler('InitializeCostFunctionGRS: unknown cost' // & 
+            call gdErrorHandler('InitializeCostFunctionGRS: unknown cost' // &
                 'function type: ' // options%type)
 
         end select
@@ -329,50 +329,50 @@ module sosmod_costfunction
 
         ! Description
         !============
-        ! Evaluate the cost function, the gradient and its hessian. 
+        ! Evaluate the cost function, the gradient and its hessian.
         ! First, the goat equations are solved by calling the driver (
         ! it is assumed that goat is up to date). Afterwards, the cost
-        ! function is evaluated and its gradient is computed by 
+        ! function is evaluated and its gradient is computed by
         ! applying a discrete adjoint approach to account for the
         ! goat constraints. The contributions of the goat constraints to
-        ! the hessian of the problem are not accounted for... 
+        ! the hessian of the problem are not accounted for...
 
         ! Note: for the gradient, we need to account for the dependency
-        ! of the psi values (and first order derivatives) on the 
-        ! grid coordinates in solps. The partial derivatives are 
-        ! available through the differentiated structures (geo_diff 
+        ! of the psi values (and first order derivatives) on the
+        ! grid coordinates in solps. The partial derivatives are
+        ! available through the differentiated structures (geo_diff
         ! types for example), but we need to differentiate again w.r.t.
-        ! the coordinates here. Additionally, we have to update the 
+        ! the coordinates here. Additionally, we have to update the
         ! coordinate-dependent structures before evaluating the solps
-        ! cost function. Note that we also update the grid cell 
-        ! coordinates, even though they are recomputed afterwards in 
+        ! cost function. Note that we also update the grid cell
+        ! coordinates, even though they are recomputed afterwards in
         ! solps - reason is that there is a vertex ordening step that
-        ! (for solps reasons) comes before recomputation of the cell 
-        ! centers, which requires an estimate of the cell center 
+        ! (for solps reasons) comes before recomputation of the cell
+        ! centers, which requires an estimate of the cell center
         ! coordinates. This also means that there is no gradient
         ! contribution of the cell center coordinates that has to be
-        ! accounted for. 
+        ! accounted for.
 
         ! Declare variables
         !==================
         ! Arguments
-        class(CostfunctionGSRUDT)       :: costfunction 
+        class(CostfunctionGSRUDT)       :: costfunction
         real(R8_G)                      :: J
         real(R8_G), allocatable         :: gradJ(:) ! assumed initialized
         type(MySparseUDT)               :: hessJ ! assumed in initialized
         type(OptimizationProblemGDUDT)  :: goat
-        logical                         :: dogradient, dohessian 
+        logical                         :: dogradient, dohessian
         class(DesignVariablesSOUDT)     :: designvariables
 
         ! Optional arguments
-        character(*), intent(in), optional  :: varin 
+        character(*), intent(in), optional  :: varin
         real(R8_G), intent(in), optional    :: valuesin(:)
-        real(R8_G), allocatable, optional   :: dJdvarin(:) 
+        real(R8_G), allocatable, optional   :: dJdvarin(:)
         type(MySparseUDT), optional         :: dgradJdvarin
 
         character(:), allocatable           :: var
         real(R8_G), allocatable             :: values(:)
-        real(R8_G), allocatable             :: dJdvar(:) 
+        real(R8_G), allocatable             :: dJdvar(:)
         type(MySparseUDT)                   :: dgradJdvar
 
         ! Auxiliary
@@ -404,16 +404,16 @@ module sosmod_costfunction
             d2psidxdy(nv))
 
         ! Check inputs
-        if (present(varin)) then 
-            var = varin 
+        if (present(varin)) then
+            var = varin
         else
             var = 'no'
-        end if 
-        if (present(valuesin)) then 
-            values = valuesin 
+        end if
+        if (present(valuesin)) then
+            values = valuesin
         else
             allocate(values(0))
-        end if 
+        end if
 
         ! Initialize others
         allocate(gradJg(designvariables%nphi))
@@ -425,9 +425,9 @@ module sosmod_costfunction
         ! Initialize others
         allocate(gradJgoat(size(goatvariables)))
 
-        ! Solve goat 
+        ! Solve goat
         !===========
-        
+
 
         ! Try to solve
         associate(goatproblem       => costfunction%goatengine%problem)
@@ -436,7 +436,7 @@ module sosmod_costfunction
         type is (OptimizationProblemGDUDT)
 
             ! Update the problem with the latest goat
-            goatproblem = goat 
+            goatproblem = goat
 
             ! Keep track of errors
             call ErrorStack%StartTrack()
@@ -444,22 +444,22 @@ module sosmod_costfunction
             ! Call the driver
             call costfunction%goatengine%solver%SolveOptimizationProblem(goatproblem)
 
-            ! Check if an error was found, if so: call error (softly) and 
+            ! Check if an error was found, if so: call error (softly) and
             ! set cost function value and gradient to inf
             errstat = ErrorStack%ErrorState()
             call ErrorStack%EndTrack()
-            if (errstat > 0) then 
+            if (errstat > 0) then
                 call gdErrorHandler('EvaluateCostFunctionGSR: error encountered ' // &
-                    'while evaluating goat equations. Setting cost function value ' // & 
+                    'while evaluating goat equations. Setting cost function value ' // &
                     'to infinity and exiting evaluation', severityin=0)
                 J = posinfval_R8()
-                return 
-            end if 
+                return
+            end if
 
             ! Update goat (only if converged...)
             goat = goatproblem
 
-        class default 
+        class default
 
             ! Throw error
             call gdErrorHandler('EvaluateCostFunctionGR: unexpected goat type')
@@ -467,7 +467,7 @@ module sosmod_costfunction
         end select
         end associate
 
-        
+
 
         ! Compute reduced cost function
         !==============================
@@ -484,17 +484,17 @@ module sosmod_costfunction
         call MFinterp%Evaluate(x, y, 0, 0, psi)
         call MFinterp%Evaluate(x, y, 1, 0, dpsidx)
         call MFinterp%Evaluate(x, y, 0, 1, dpsidy)
-        
-        ! Update SOLPS quantities
-        costfunction%cfvsolps%g%vxX = x 
-        costfunction%cfvsolps%g%vxY = y 
-        costfunction%cfvsolps%g%vxFpsi = psi 
-        costfunction%cfvsolps%g%vxBx = dpsidx 
-        costfunction%cfvsolps%g%vxBy = dpsidy 
 
-        ! Update cell center coordinates (only necessary for vertex 
+        ! Update SOLPS quantities
+        costfunction%cfvsolps%g%vxX = x
+        costfunction%cfvsolps%g%vxY = y
+        costfunction%cfvsolps%g%vxFpsi = psi
+        costfunction%cfvsolps%g%vxBx = dpsidx
+        costfunction%cfvsolps%g%vxBy = dpsidy
+
+        ! Update cell center coordinates (only necessary for vertex
         ! ordening, should be unnecessary in the future)
-        do i = 1, goat%grid%cell%ntot 
+        do i = 1, goat%grid%cell%ntot
             tv = GetCellVert(goat%grid%cell, i)
             costfunction%cfvsolps%g%cvX(i) = sum(x(tv))/real(size(tv), kind=R8_G)
             costfunction%cfvsolps%g%cvY(i) = sum(y(tv))/real(size(tv), kind=R8_G)
@@ -506,7 +506,7 @@ module sosmod_costfunction
         ! Total
         J = Jg + Js
 
-        ! Compute goat linearization 
+        ! Compute goat linearization
         !===========================
         ! Evaluate goat jacobian w.r.t. goat variables
         call goat%EvaluateJacobian('goatvariables', goatvariables, jacGgoat)
@@ -523,23 +523,23 @@ module sosmod_costfunction
         case ('vesselcoordinates_goat')
 
             ! Illegal, throw error
-            call gdErrorHandler('EvaluteCostFunctionGR: goat variables' // & 
-                ' cannot be present as explicit design variables, ' // & 
+            call gdErrorHandler('EvaluteCostFunctionGR: goat variables' // &
+                ' cannot be present as explicit design variables, ' // &
                 ' not supported')
 
-        case default 
+        case default
 
-            ! Unknown 
-            call gdErrorHandler('EvaluateCostFunctionGR: design variable' // & 
-                ' gradient w.r.t. design variables of type: ' // & 
+            ! Unknown
+            call gdErrorHandler('EvaluateCostFunctionGR: design variable' // &
+                ' gradient w.r.t. design variables of type: ' // &
                 designvariables%type // ' are not implemented')
 
         end select
 
         ! Compute gradients
         !==================
-        ! Compute partial derivatives of psi and dpsidx, dpsidy w.r.t. 
-        ! grid coordinates (simply 'diagonal' matrix linearization 
+        ! Compute partial derivatives of psi and dpsidx, dpsidy w.r.t.
+        ! grid coordinates (simply 'diagonal' matrix linearization
         ! (dpsidx, dpsidy computed before and up to date))
         call MFinterp%Evaluate(x, y, 2, 0, d2psidx2)
         call MFinterp%Evaluate(x, y, 1, 1, d2psidxdy)
@@ -548,11 +548,11 @@ module sosmod_costfunction
         ! Compute solps gradient w.r.t. goat variables (assumed no contribution of ffbz)
         gradJsolps = gradJgoat ! initialize
         gradJsolps = 0
-        gradJsolps(1:2*nv) = gradJs(1:2*nv) ! dJdx, dJdy 
+        gradJsolps(1:2*nv) = gradJs(1:2*nv) ! dJdx, dJdy
         gradJsolps(1:nv) = gradJsolps(1:nv) + gradJs(2*nv+1:3*nv)*dpsidx &
-            + gradJs(3*nv+1:4*nv)*d2psidx2 + gradJs(4*nv+1:5*nv)*d2psidxdy ! dJdpsi*dpsidx + dJd(dpsidx)*d(dpsidx)dx + dJd(dpsidy)*d(dpsidy)dx 
+            + gradJs(3*nv+1:4*nv)*d2psidx2 + gradJs(4*nv+1:5*nv)*d2psidxdy ! dJdpsi*dpsidx + dJd(dpsidx)*d(dpsidx)dx + dJd(dpsidy)*d(dpsidy)dx
         gradJsolps(nv+1:2*nv) = gradJsolps(nv+1:2*nv) + gradJs(2*nv+1:3*nv)*dpsidy &
-            + gradJs(3*nv+1:4*nv)*d2psidxdy + gradJs(4*nv+1:5*nv)*d2psidy2 ! dJdpsi*dpsidy + dJd(dpsidx)*d(dpsidx)dy + dJd(dpsidy)*d(dpsidy)dy 
+            + gradJs(3*nv+1:4*nv)*d2psidxdy + gradJs(4*nv+1:5*nv)*d2psidy2 ! dJdpsi*dpsidy + dJd(dpsidx)*d(dpsidx)dy + dJd(dpsidy)*d(dpsidy)dy
 
         ! Compute lagrange multipliers
         gradGgoat = jacGgoat%Transpose()
@@ -568,14 +568,14 @@ module sosmod_costfunction
 
         ! Compute hessian
         !================
-        if (dohessian) then 
+        if (dohessian) then
             ! Update the hessian approximation for the reduced part
             call costfunction%B%Update(designvariables%phi, gradR)
 
-            ! Extract the hessian approximation and add with other 
+            ! Extract the hessian approximation and add with other
             ! contributions of which exact hessian is known
             hessJ = hessJg + costfunction%B%GetSparseHessian()
-        end if 
+        end if
 
         ! Write out data for gradient verification
         !=========================================
@@ -593,10 +593,10 @@ module sosmod_costfunction
         end associate
 
         ! Optional arguments
-        if (present(dJdvarin)) then 
-            dJdvarin = dJdvar 
-        end if 
-        if (present(dgradJdvarin)) then 
+        if (present(dJdvarin)) then
+            dJdvarin = dJdvar
+        end if
+        if (present(dgradJdvarin)) then
             dgradJdvarin = dgradJdvar
         end if
 

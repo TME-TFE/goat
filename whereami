@@ -37,8 +37,9 @@ case "*.iferc-csc.org":
   breaksw
 case "*.eufus.eu":
 case "*.efda-itm.eu":
-case "*.marconi.cineca.it"
-case "*.galileo.cineca.it"
+case "*.marconi.cineca.it":
+case "*.galileo.cineca.it":
+case "*.efgw.local":
   [ -d /afs ] && echo ITM || echo MARCONI
   breaksw
 case "*.ipp-garching.mpg.de":

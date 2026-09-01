@@ -1,6 +1,6 @@
 # Configuration file for the grid deformation makefile. Variables etc 
 # are listed below. When introducing new variables or other 
-# functionality, please document using the '##' prefix. THis should
+# functionality, please document using the '##' prefix. This should
 # be compatible with the 'help' target in the makefile. 
 
 ##
@@ -52,13 +52,13 @@ ifdef DMUMPS_LPATH
             $(info % MUMPS paths available, but no MPI. Not compiling MUMPS.)
         endif
     else
-        # Not all paths define, issue message and undefine to ensure proper compilation
+        # Not all paths defined, issue message and undefine to ensure proper compilation
         $(info % MUMPS include path not set, set "DMUMPS_LPATH" and "DMUMPS_IPATH" to enable compilation with MUMPS)  
         undefine DMUMPS_LPATH 
         undefine DMUMPS_IPATH 
     endif
 else
-    # Not all paths define, issue message and undefine to ensure proper compilation
+    # Not all paths defined, issue message and undefine to ensure proper compilation
     $(info % MUMPS library path not set, set "DMUMPS_LPATH" and "DMUMPS_IPATH" to enable compilation with MUMPS) 
     undefine DMUMPS_LPATH 
     undefine DMUMPS_IPATH 
@@ -172,7 +172,9 @@ BUILDDIR = ${PREF_OBJDIR}.${HOST_NAME}.${COMPILER}${EXT_OPENMP}${EXT_MPI}${EXT_I
 ## % Include paths
 ## %==============
 ## SUITESPARSEPATH      : SuiteSparse header file path
+ifndef SUITESPARSEPATH
 SUITESPARSEPATH = -I/usr/include/suitesparse
+endif
 
 ## CFLAGS			: Compiler flags for standard compilation (may be overridden)
 CFLAGS_DEF = -c -fopenmp
@@ -306,8 +308,8 @@ SHAPEOPT_FILES  = src/Modules/ShapeOpt/somod_userinput.F90 \
 SHAPEOPTSOLPS_FILES  =  src/Modules/ShapeOpt/somod_userinput.F90 \
     src/Modules/ShapeOpt/somod_designvariables.F90 src/Modules/ShapeOpt/somod_costfunction.F90 \
     src/Modules/ShapeOpt/somod_constraints.F90  src/Modules/ShapeOpt/sosmod_costfunction.F90 \
-    src/Modules/ShapeOpt/somod_optimizationengine.F90 
-    
+    src/Modules/ShapeOpt/somod_optimizationengine.F90
+
 
 ## % Targets
 ## %========

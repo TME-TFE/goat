@@ -1,0 +1,13 @@
+setenv MODULES_ADVANCED_VERSION_SPEC 0
+
+# add IMAS module list to module system
+module load ach-modules
+
+module load matplotlib/3.8.2-gfbf-2023b
+module load SuiteSparse/7.7.0-foss-2023b
+module load gompi/2023b
+module load SCOTCH/7.0.4-gompi-2023b
+module load ScaLAPACK/2.2.0-gompi-2023b-fb
+module load OpenBLAS/0.3.24-GCC-13.2.0
+
+setenv SUITESPARSEPATH "-I${EBROOTSUITESPARSE}/include/suitesparse"

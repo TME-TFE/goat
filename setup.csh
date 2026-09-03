@@ -50,7 +50,14 @@ echo 'Running at goat top directory: '  ${GOATTOP}
 setenv GOAT_SCRIPTPATHS ${GOATTOP}/scripts
 setenv GOAT_EXECUTABLES ${GOATTOP}/executables
 setenv GOAT_VISUALIZATION ${GOATTOP}/scripts
-setenv PATH "${GOAT_SCRIPTPATHS}:${GOAT_EXECUTABLES}:${PATH}"
+setenv GOAT_BUILD_DEBUG ${GOATTOP}/build-debug/Runfiles
+
+if ( ":${PATH}:" !~ *":${GOAT_SCRIPTPATHS}:"* ) then
+    setenv PATH "${GOAT_SCRIPTPATHS}:${PATH}"
+endif
+if ( ":${PATH}:" !~ *":${GOATTOP}:"* ) then
+    setenv PATH "${GOATTOP}:${PATH}"
+endif
 
 # Set HOST_NAME and COMPILER, which will determine setup files to be used
 #------------------------------------------------------------------------

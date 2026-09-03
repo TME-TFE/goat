@@ -1,0 +1,23 @@
+# General
+module load matplotlib/3.5.2-foss-2022a
+module load SuiteSparse/5.13.0-foss-2022a-METIS-5.1.0
+module load gompi/2022a
+module load SCOTCH/7.0.1-gompi-2022a
+module load ScaLAPACK/2.2.0-gompi-2022a-fb
+module load OpenBLAS/0.3.20-GCC-11.3.0
+module load METIS/5.1.0-GCCcore-11.3.0 
+module load ParMETIS/4.0.3-gompi-2022a
+# module load ArmForge/22.1.2
+module load CMake/3.23.1-GCCcore-11.3.0
+module load Ninja
+
+setenv OMP_NUM_THREADS 4
+
+# Uncomment for cluster installation of MUMPS
+# module load MUMPS
+#setenv DMUMPS_LPATH "-lsmumps -ldmumps -lmumps_common -lmetis -lptesmumps -lscotch -lptscotch -lptscotcherr -lpord -lscalapack -lpthread -lopenblas"
+#setenv DMUMPS_IPATH "-I/apps/leuven/${VSC_OS_LOCAL}/${VSC_ARCH_LOCAL}${VSC_ARCH_SUFFIX}/2024a/software/MUMPS/5.7.2-foss-2024a-metis/include"
+
+# Uncomment for local installation of MUMPS
+#setenv DMUMPS_LPATH "-L../MUMPS_5.8.0/lib -lsmumps -ldmumps -lmumps_common -L/usr/lib  -lparmetis -lmetis -L../../PORD/lib/ -lpord -L/usr/lib -lesmumps -lscotch -lscotcherr -lscalapack  -lopenblas -lpthread"
+#setenv DMUMPS_IPATH "-I../MUMPS_5.8.0/include"

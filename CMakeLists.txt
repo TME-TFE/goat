@@ -20,7 +20,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # CMake compilation instructions (test) 
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.23)
 
 # Project declaration
 project(goat)

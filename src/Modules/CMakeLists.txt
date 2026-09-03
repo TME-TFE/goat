@@ -1,0 +1,5 @@
+add_subdirectory(GA)
+add_subdirectory(GD)
+add_subdirectory(GG)
+add_subdirectory(Goat)
+#add_subdirectory(ShapeOpt)

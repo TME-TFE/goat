@@ -17,7 +17,6 @@ subroutine RunGridOptimization(grid, magneticField, environment, &
     use gdmod_userinput 
     use gdmod_plots
     use mod_plotter
-    use BicubicSplineInterpolant
     use gdmod_optimizationengine
 
     ! The usual

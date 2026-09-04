@@ -182,7 +182,7 @@ def GetPolygonCoordinates(filepath):
 
     for i in alllines:
         if i == '\n':  # empty string
-            vals[cc, :] = np.NaN
+            vals[cc, :] = np.nan
         else:
             # Read
             vals[cc, 0:2] = np.fromstring(i, dtype=float, count=2, sep=' ')
@@ -2902,7 +2902,7 @@ def ReadFort78File(filepath):
         # Check the size
         if len(temp) != 3:
             # Insert NaN
-            vals[cc, :] = np.NaN
+            vals[cc, :] = np.nan
         else:
             # Read
             vals[cc, 0:2] = np.fromstring(i, dtype=float, count=2, sep=' ')

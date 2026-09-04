@@ -112,12 +112,12 @@ def LineIntersections(x11, y11, x12, y12, x21, y21, x22, y22):
         # Check 
         if (dist < disttol): 
             # collinear lines, return inf
-            x = np.NaN
+            x = np.nan
             y = x
             return x, y  
         else:
             # Parallel lines, return nan
-            x = np.NaN
+            x = np.nan
             y = x 
             
             return x, y 
@@ -157,12 +157,12 @@ def LineIntersections(x11, y11, x12, y12, x21, y21, x22, y22):
             # Check 
             if (dist < disttol): 
                 # collinear lines, return inf
-                x = np.NaN
+                x = np.nan
                 y = x 
                 return x, y 
             else:
                 # Parallel lines, return nan
-                x = np.NaN
+                x = np.nan
                 y = x 
                 
                 return x, y
@@ -198,14 +198,13 @@ def LineIntersections(x11, y11, x12, y12, x21, y21, x22, y22):
             # Check 
             if (dist < disttol): 
                 # collinear lines, return inf
-                x = np.NaN
+                x = np.nan
                 y = x 
             else:
                 # Parallel lines, return nan
-                x = np.NaN
+                x = np.nan
                 y = x 
                 
     return x, y
             
         
-

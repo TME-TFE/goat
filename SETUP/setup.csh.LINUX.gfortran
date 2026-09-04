@@ -1,0 +1,92 @@
+setenv SYSNAME `uname`_`arch`
+alias gmake make
+if ( ! $?MISSING_DEPENDENCY ) set MISSING_DEPENDENCY = 0
+
+# Initialize the path collections, if they do not exist already
+
+if ( ! $?LD_LIBRARY_PATH ) then
+    setenv LD_LIBRARY_PATH
+endif
+if ( ! $?PKG_CONFIG_PATH ) then
+    setenv PKG_CONFIG_PATH
+endif
+
+# Add directories of compiled libraries, include directives, etc.
+
+setenv PATH "${PATH}:/usr/bin"
+setenv LD_LIBRARY_PATH "${LD_LIBRARY_PATH}:/usr/lib"
+
+if ( `which python3 >& /dev/null; echo $status` != 0 ) then
+    echo "Warning: python installation not found. Install it using your preferred method."
+else
+    setenv PATH "${PATH}:`which python3 | xargs dirname`"
+    setenv LD_LIBRARY_PATH "${LD_LIBRARY_PATH}:`which python3 | xargs dirname`/../lib"
+endif
+
+set all_lib_paths = ( /usr/lib /usr/lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu /usr/local/lib )
+set lib_paths = ()
+foreach d ($all_lib_paths)
+    if (-d $d) then
+        set lib_paths = ( $lib_paths $d )
+    endif
+end
+
+setenv LAPACK_LIB_DIR `find $lib_paths -type f -name "liblapack*.so*" -exec dirname {} \; | sort -u | head -1`
+setenv BLAS_LIB_DIR `find $lib_paths -type f -name "libblas*.so*" -exec dirname {} \; | sort -u | head -1`
+setenv OPENBLAS_LIB_DIR `find $lib_paths -type f -name "libopenblas*.so*" -exec dirname {} \; | sort -u | head -1`
+setenv SUITESPARSE_LIB_DIR `find $lib_paths -type f -name "libcxsparse*.so*" -exec dirname {} \; | sort -u | head -1`
+setenv SUITESPARSE_INCLUDE_DIR `find /usr/include /usr/local/include -type f -name "cs.h" -exec dirname {} \; | sort -u | head -1`
+
+setenv LAPACKPATH "-L${LAPACK_LIB_DIR} -llapack"
+setenv BLASPATH "-L${OPENBLAS_LIB_DIR} -lopenblas"
+setenv UMFPACKPATH "-L${SUITESPARSE_LIB_DIR} -lumfpack"
+setenv CXSparsePATH "-L${SUITESPARSE_LIB_DIR}"
+setenv SUITESPARSEPATH "-I${SUITESPARSE_INCLUDE_DIR}"
+
+setenv PKG_CONFIG_PATH "${PKG_CONFIG_PATH}:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/local/lib/pkgconfig"
+
+# Define compilers
+
+setenv CC gcc
+setenv FC gfortran
+setenv MPI_FC /usr/bin/mpif90
+setenv CXX g++
+
+# Check if external libraries are installed
+
+set pkg_check = `dpkg -l | grep -w gcc`
+if ("$pkg_check" == "") then
+    set MISSING_DEPENDENCY = 1
+endif
+set pkg_check = `dpkg -l | grep -w g++`
+if ("$pkg_check" == "") then
+    set MISSING_DEPENDENCY = 1
+endif
+set pkg_check = `dpkg -l | grep -w gfortran`
+if ("$pkg_check" == "") then
+    set MISSING_DEPENDENCY = 1
+endif
+set pkg_check = `dpkg -l | grep -w cmake`
+if ("$pkg_check" == "") then
+    set MISSING_DEPENDENCY = 1
+endif
+set pkg_check = `dpkg -l | grep -w libblas-dev`
+if ("$pkg_check" == "") then
+    set MISSING_DEPENDENCY = 1
+endif
+set pkg_check = `dpkg -l | grep -w liblapack-dev`
+if ("$pkg_check" == "") then
+    set MISSING_DEPENDENCY = 1
+endif
+set pkg_check = `dpkg -l | grep -w libopenblas-dev`
+if ("$pkg_check" == "") then
+    set MISSING_DEPENDENCY = 1
+endif
+set pkg_check = `dpkg -l | grep -w libsuitesparse-dev`
+if ("$pkg_check" == "") then
+    set MISSING_DEPENDENCY = 1
+endif
+
+if ( $?MISSING_DEPENDENCY && "$MISSING_DEPENDENCY" == "1" ) then
+    echo "Warning: some dependencies are not installed. Install them using your preferred method."
+endif

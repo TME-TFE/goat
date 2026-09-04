@@ -1,0 +1,356 @@
+#! /usr/bin/env tcsh
+
+if ( ! $?MISSING_DEPENDENCY ) set MISSING_DEPENDENCY = 0
+
+# Create local setup file, if it does not already exist, where to append the new library paths
+
+if (! $?GOATTOP) then
+  setenv GOATTOP `pwd`
+endif
+if (! $?HOST_NAME) then
+  if (`uname` == "Darwin") then
+    setenv HOST_NAME DARWIN
+  else
+    setenv HOST_NAME LINUX
+  endif
+endif
+if (! $?COMPILER) then
+  setenv COMPILER gfortran
+endif
+
+if (! -e "${GOATTOP}/SETUP/setup.csh.${HOST_NAME}.${COMPILER}.local") then
+  touch ${GOATTOP}/SETUP/setup.csh.${HOST_NAME}.${COMPILER}.local
+else
+  cp ${GOATTOP}/SETUP/setup.csh.${HOST_NAME}.${COMPILER}.local ${GOATTOP}/SETUP/setup.csh.${HOST_NAME}.${COMPILER}.local.bak
+endif
+
+# Check if the required package managers are installed
+
+if ("$OSTYPE" == "linux") then
+
+  if ( `which apt-get >& /dev/null; echo $status` != 0 ) then
+    echo
+    echo "Warning: apt-get installation not found. Install GOAT dependencies using your preferred method."
+    exit 1
+  endif
+
+else if ("$OSTYPE" == "darwin") then
+
+  if ( `which brew >& /dev/null; echo $status` != 0 ) then
+    echo
+    echo "Warning: Homebrew installation not found. Install it from https://brew.sh/."
+    echo "After that, relaunch the install_dependencies script."
+    exit 1
+  endif
+
+endif
+
+# Install relevant compilers
+
+if ("$OSTYPE" == "linux" && "$HOST_NAME" == "LINUX") then
+
+  set pkg_check = `dpkg -l | grep -w gcc`
+  if ("$pkg_check" == "") then
+    echo
+    echo gcc compiler not locally installed.
+    echo -n "Do you wish to install it? The apt package manager will be used. (y/n) [y] "
+    set GCC_INSTALL = $<
+    if ( "$GCC_INSTALL" == "" ) set GCC_INSTALL = "y"
+    if ( "$GCC_INSTALL" == "y" ) then
+      sudo apt-get install -y gcc
+      echo gcc compiler successfully installed.
+      sleep 1
+    else
+      set MISSING_DEPENDENCY = 1
+      sleep 1
+    endif
+  else
+    echo
+    echo gcc compiler already locally installed.
+    sleep 1
+  endif
+
+  set pkg_check = `dpkg -l | grep -w g++`
+  if ("$pkg_check" == "") then
+    echo
+    echo g++ compiler not locally installed.
+    echo -n "Do you wish to install it? The apt package manager will be used. (y/n) [y] "
+    set GPP_INSTALL = $<
+    if ( "$GPP_INSTALL" == "" ) set GPP_INSTALL = "y"
+    if ( "$GPP_INSTALL" == "y" ) then
+      sudo apt-get install -y g++
+      echo g++ compiler successfully installed.
+      sleep 1
+    else
+      set MISSING_DEPENDENCY = 1
+      sleep 1
+    endif
+  else
+    echo
+    echo g++ compiler already locally installed.
+    sleep 1
+  endif
+
+  set pkg_check = `dpkg -l | grep -w gfortran`
+  if ("$pkg_check" == "") then
+    echo
+    echo gfortran compiler not locally installed.
+    echo -n "Do you wish to install it? The apt package manager will be used. (y/n) [y] "
+    set GFORTRAN_INSTALL = $<
+    if ( "$GFORTRAN_INSTALL" == "" ) set GFORTRAN_INSTALL = "y"
+    if ( "$GFORTRAN_INSTALL" == "y" ) then
+      sudo apt-get install -y gfortran
+      echo gfortran compiler successfully installed.
+      sleep 1
+    else
+      set MISSING_DEPENDENCY = 1
+      sleep 1
+    endif
+  else
+    echo
+    echo gfortran compiler already locally installed.
+    sleep 1
+  endif
+
+else if ("$OSTYPE" == "darwin") then
+
+  if ( `brew list | grep -c '^gcc$'` == 0 ) then
+    echo
+    echo gcc library not locally installed.
+    echo -n "Do you wish to install it? The brew package manager will be used. (y/n) [y] "
+    set GCC_INSTALL = $<
+    if ( "$GCC_INSTALL" == "" ) set GCC_INSTALL = "y"
+    if ( "$GCC_INSTALL" == "y" ) then
+      brew install gcc
+      echo gcc library successfully installed.
+      sleep 1
+    else
+      set MISSING_DEPENDENCY = 1
+      sleep 1
+    endif
+  else
+    echo
+    echo gcc library already locally installed.
+    sleep 1
+  endif
+
+endif
+
+# Install Python
+
+if ("$OSTYPE" == "linux" && "$HOST_NAME" == "LINUX") then
+
+  set pkg_check = `dpkg -l | grep -w python3`
+  if ("$pkg_check" == "") then
+    echo
+    echo python3 not locally installed.
+    echo -n "Do you wish to install it? The apt package manager will be used. (y/n) [y] "
+    set PYTHON_INSTALL = $<
+    if ( "$PYTHON_INSTALL" == "" ) set PYTHON_INSTALL = "y"
+    if ( "$PYTHON_INSTALL" == "y" ) then
+      sudo apt-get install -y python3 python3-pip
+      echo python3 successfully installed.
+      sleep 1
+    else
+      set MISSING_DEPENDENCY = 1
+      sleep 1
+    endif
+  else
+    echo
+    echo python3 already locally installed.
+    sleep 1
+  endif
+
+else if ("$OSTYPE" == "darwin") then
+
+  if ( `which python >& /dev/null; echo $status` != 0 ) then
+    echo
+    echo python not locally installed.
+    echo -n "Do you wish to install it? The brew package manager will be used. (y/n) [y] "
+    set PYTHON_INSTALL = $<
+    if ( "$PYTHON_INSTALL" == "" ) set PYTHON_INSTALL = "y"
+    if ( "$PYTHON_INSTALL" == "y" ) then
+      brew install python
+      echo python successfully installed.
+      sleep 1
+    else
+      set MISSING_DEPENDENCY = 1
+      sleep 1
+    endif
+  else
+    echo
+    echo python already locally installed.
+    sleep 1
+  endif
+
+endif
+
+# Install Blas/Lapack libraries
+
+if ("$OSTYPE" == "linux" && "$HOST_NAME" == "LINUX") then
+
+  set pkg_check = `dpkg -l | grep -w libblas-dev`
+  if ("$pkg_check" == "") then
+    echo
+    echo Blas library not locally installed.
+    echo -n "Do you wish to install it? The apt package manager will be used. (y/n) [y] "
+    set BLAS_INSTALL = $<
+    if ( "$BLAS_INSTALL" == "" ) set BLAS_INSTALL = "y"
+    if ( "$BLAS_INSTALL" == "y" ) then
+      sudo apt-get install -y libblas-dev
+      echo Blas library successfully installed.
+      sleep 1
+    else
+      set MISSING_DEPENDENCY = 1
+      sleep 1
+    endif
+  else
+    echo
+    echo Blas library already locally installed.
+    sleep 1
+  endif
+
+  set pkg_check = `dpkg -l | grep -w liblapack-dev`
+  if ("$pkg_check" == "") then
+    echo
+    echo Lapack library not locally installed.
+    echo -n "Do you wish to install it? The apt package manager will be used. (y/n) [y] "
+    set LAPACK_INSTALL = $<
+    if ( "$LAPACK_INSTALL" == "" ) set LAPACK_INSTALL = "y"
+    if ( "$LAPACK_INSTALL" == "y" ) then
+      sudo apt-get install -y liblapack-dev
+      echo Lapack library successfully installed.
+      sleep 1
+    else
+      set MISSING_DEPENDENCY = 1
+      sleep 1
+    endif
+  else
+    echo
+    echo Lapack library already locally installed.
+    sleep 1
+  endif
+
+  set pkg_check = `dpkg -l | grep -w libopenblas-dev`
+  if ("$pkg_check" == "") then
+    echo
+    echo OpenBlas library not locally installed.
+    echo -n "Do you wish to install it? The apt package manager will be used. (y/n) [y] "
+    set OPENBLAS_INSTALL = $<
+    if ( "$OPENBLAS_INSTALL" == "" ) set OPENBLAS_INSTALL = "y"
+    if ( "$OPENBLAS_INSTALL" == "y" ) then
+      sudo apt-get install -y libopenblas-dev
+      echo OpenBlas library successfully installed.
+      sleep 1
+    else
+      set MISSING_DEPENDENCY = 1
+      sleep 1
+    endif
+  else
+    echo
+    echo OpenBlas library already locally installed.
+    sleep 1
+  endif
+
+else if ("$OSTYPE" == "darwin") then
+
+  if ( `brew list | grep -c '^lapack$'` == 0 ) then
+    echo
+    echo Lapack library not locally installed.
+    echo -n "Do you wish to install it? The brew package manager will be used. (y/n) [y] "
+    set LAPACK_INSTALL = $<
+    if ( "$LAPACK_INSTALL" == "" ) set LAPACK_INSTALL = "y"
+    if ( "$LAPACK_INSTALL" == "y" ) then
+      brew install lapack
+      echo Lapack library successfully installed.
+      sleep 1
+    else
+      set MISSING_DEPENDENCY = 1
+      sleep 1
+    endif
+  else
+    echo
+    echo Lapack library already locally installed.
+    sleep 1
+  endif
+
+  if ( `brew list | grep -c '^openblas$'` == 0 ) then
+    echo
+    echo OpenBlas library not locally installed.
+    echo -n "Do you wish to install it? The brew package manager will be used. (y/n) [y] "
+    set OPENBLAS_INSTALL = $<
+    if ( "$OPENBLAS_INSTALL" == "" ) set OPENBLAS_INSTALL = "y"
+    if ( "$OPENBLAS_INSTALL" == "y" ) then
+      brew install openblas
+      echo OpenBlas library successfully installed.
+      sleep 1
+    else
+      set MISSING_DEPENDENCY = 1
+      sleep 1
+    endif
+  else
+    echo
+    echo OpenBlas library already locally installed.
+    sleep 1
+  endif
+
+endif
+
+# Install SuiteSparse library
+
+if ("$OSTYPE" == "linux" && "$HOST_NAME" == "LINUX") then
+
+  set pkg_check = `dpkg -l | grep -w libsuitesparse-dev`
+  if ("$pkg_check" == "") then
+    echo
+    echo SuiteSparse library not locally installed.
+    echo -n "Do you wish to install it? The apt package manager will be used. (y/n) [y] "
+    set SUITESPARSE_INSTALL = $<
+    if ( "$SUITESPARSE_INSTALL" == "" ) set SUITESPARSE_INSTALL = "y"
+    if ( "$SUITESPARSE_INSTALL" == "y" ) then
+      sudo apt-get install -y libsuitesparse-dev
+      echo SuiteSparse library successfully installed.
+      sleep 1
+    else
+      set MISSING_DEPENDENCY = 1
+      sleep 1
+    endif
+  else
+    echo
+    echo SuiteSparse library already locally installed.
+    sleep 1
+  endif
+
+else if ("$OSTYPE" == "darwin") then
+
+  if ( `brew list | grep -c '^suite-sparse$'` == 0 ) then
+    echo
+    echo SuiteSparse library not locally installed.
+    echo -n "Do you wish to install it? The brew package manager will be used. (y/n) [y] "
+    set SUITESPARSE_INSTALL = $<
+    if ( "$SUITESPARSE_INSTALL" == "" ) set SUITESPARSE_INSTALL = "y"
+    if ( "$SUITESPARSE_INSTALL" == "y" ) then
+      brew install suite-sparse
+      echo SuiteSparse library successfully installed.
+      sleep 1
+    else
+      set MISSING_DEPENDENCY = 1
+      sleep 1
+    endif
+  else
+    echo
+    echo SuiteSparse library already locally installed.
+    sleep 1
+  endif
+
+endif
+
+if ( $?MISSING_DEPENDENCY && "$MISSING_DEPENDENCY" == "1" ) then
+  echo
+  echo "Warning: some dependencies are not installed."
+  echo "Install the missing dependencies and relaunch the install_dependencies script."
+else
+  echo
+  echo "All GOAT dependencies are available."
+  echo "Close your shell, re-open it, and source setup.csh."
+endif

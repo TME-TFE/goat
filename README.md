@@ -17,6 +17,7 @@ To install goat, you need a Unix-like environment and the tcsh shell. Additional
 - OpenBLAS
 
 Using Ubuntu, one can use the package manager to install these libraries (e.g. `sudo apt install libopenblas-dev` for OpenBLAS, `sudo apt install libsuitesparse-dev`, `sudo apt install gfortran`)
+For local macOS and Linux machines, `scripts/install_dependencies` can be used to check and install the required GOAT dependencies.
 To run the Python visualization scripts, a Python installation with additional packages (and their dependencies) is required:
 - Matplotlib
 - Numpy

@@ -1,3 +1,5 @@
+# Goat program
+#-------------
 # Add main program as target
 add_executable(goat
     Goat.F90)
@@ -27,4 +29,37 @@ target_link_libraries(goat PRIVATE
 
 # Installation
 install(TARGETS goat
+    RUNTIME DESTINATION .)
+
+# Shapeopt program
+#-----------------
+# Add shape optimization as target
+add_executable(shapeopt
+    ShapeOptimization.F90)
+
+setup_fortran_target(shapeopt)
+
+# Link
+target_link_libraries(shapeopt PRIVATE 
+    somod_userinput
+    mod_global_environment
+    mod_plotter
+    ShapeOptDriver)
+
+# Link to additional external libraries
+target_link_libraries(shapeopt PRIVATE 
+    ${CXSPARSE_LIB}
+    ${UMFPACK_LIB}
+    ${CHOLMOD_LIB}
+    ${AMD_LIB}
+    ${COLAMD_LIB}
+    ${SUITESPARSECONFIG_LIB}
+
+    BLAS::BLAS
+    LAPACK::LAPACK
+
+    OpenMP::OpenMP_Fortran)
+
+# Installation
+install(TARGETS shapeopt
     RUNTIME DESTINATION .)

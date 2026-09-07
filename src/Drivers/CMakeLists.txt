@@ -1,2 +1,2 @@
 add_subdirectory(Goat)
-#add_subdirectory(ShapeOpt)
+add_subdirectory(ShapeOpt)

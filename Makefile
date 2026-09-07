@@ -129,7 +129,6 @@ else
 	$(SUITESPARSEPATH) -I src/Clayer/Include
 endif
 	rm $(BUILDDIR)/ShapeOptimization.o; 
-	cp $(BUILDDIR)/$(EXEC_NAME) ./executables/.
 ifeq (${strip ${GOAT_DEBUG}},yes)
 	cp $(BUILDDIR)/$(EXEC_NAME) ./executables/Debug/shapeopt;
 	ln -sfn ./executables/Debug/shapeopt shapeopt_debug.exe

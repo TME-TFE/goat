@@ -40,6 +40,12 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU")
     add_compile_options(-fdiagnostics-color=always)
 endif()
 
+# Check if a SOLPS environment was loaded first, if so: throw warning
+if(DEFINED ENV{SOLPSTOP})
+    message(STATUS  
+        "SOLPSTOP is defined which implies that setup.csh of SOLPS is sourced. This may lead to unexpected behavior - please use a clean terminal")
+endif()
+
 # Include cmake helper functions
 #-------------------------------
 include(cmake/SetupFortranTarget.cmake)

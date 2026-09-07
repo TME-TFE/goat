@@ -23,6 +23,8 @@ scripts/python_source/__pycache__/*
 # ignore output files
 *.out
 executables/*
+goat.exe 
+goat_debug.exe
 
 # ignore run directory
 Runs/*

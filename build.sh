@@ -17,3 +17,8 @@ cmake --install build-release --prefix ./executables/Release
 # Construct symlinks to executables
 ln -sfn ./executables/Debug/goat goat_debug.exe
 ln -sfn ./executables/Release/goat goat.exe
+
+# Add top directory to the path variable, if not there already
+if ( ":${PATH}:" !~ *":${GOATTOP}:"* ) then
+    setenv PATH "${GOATTOP}:${PATH}"
+endif

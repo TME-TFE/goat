@@ -64,6 +64,8 @@ CREATE_BUILDDIR:= $(shell mkdir ./builds/$(BUILDDIR))
 
 ## CREATE_EXEDIR: construct executable directory 
 CREATE_EXEDIR:= $(shell mkdir ./executables)
+CREATE_EXEDIR_DEBUG:= $(shell mkdir ./executables/Debug)
+CREATE_EXEDIR_RELEASE:= $(shell mkdir ./executables/Release)
 
 BUILDDIR :=./builds/$(BUILDDIR)
 
@@ -90,7 +92,13 @@ goat: $(addprefix $(BUILDDIR)/, $(GOAT_TARGETS)) $(BUILDDIR)/goat.o
 	$(FC) $(LFLAGS) -o $(BUILDDIR)/$(EXEC_NAME) $(BUILDDIR)/*.o $(LAPACKPATH) $(BLASPATH) $(UMFPACKPATH) $(DMUMPS_LPATH) -lcxsparse \
 	$(SUITESPARSEPATH) -I src/Clayer/Include $(DMUMPS_IPATH); 
 	rm $(BUILDDIR)/Goat.o; 
-	cp $(BUILDDIR)/$(EXEC_NAME) ./executables/.
+ifeq (${strip ${GOAT_DEBUG}},yes)
+	cp $(BUILDDIR)/$(EXEC_NAME) ./executables/Debug/goat;
+	ln -sfn ./executables/Debug/goat goat_debug.exe
+else
+	cp $(BUILDDIR)/$(EXEC_NAME) ./executables/Release/goat;
+	ln -sfn ./executables/Release/goat goat.exe
+endif
 
 goat_debug: goat
 
@@ -122,7 +130,13 @@ else
 endif
 	rm $(BUILDDIR)/ShapeOptimization.o; 
 	cp $(BUILDDIR)/$(EXEC_NAME) ./executables/.
-
+ifeq (${strip ${GOAT_DEBUG}},yes)
+	cp $(BUILDDIR)/$(EXEC_NAME) ./executables/Debug/shapeopt;
+	ln -sfn ./executables/Debug/shapeopt shapeopt_debug.exe
+else
+	cp $(BUILDDIR)/$(EXEC_NAME) ./executables/Release/shapeopt;
+	ln -sfn ./executables/Release/shapeopt shapeopt.exe
+endif
 shapeopt_debug: shapeopt
 
 #shapeopt_solps: $(addprefix $(BUILDDIR)/,$(SHAPEOPTSOLPS_TARGETS) ) $(BUILDDIR)/shapeopt_solps.o 

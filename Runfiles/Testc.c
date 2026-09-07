@@ -7,12 +7,13 @@
 /*
 Just a small test routine for compilation etc 
 */
-main() 
+int main(void) 
 {
     /* Construct a matrix */
     srand(time(NULL));
     cs *T, *B, *C, *thisCS, *A, *thismmCS; 
-    MyCSparse *this, *thismm;
+    MyCSparse *this;
+    MyCSparse thismm;
     int const nval = 500;
     int rows[nval];
     int cols[nval];
@@ -44,7 +45,7 @@ main()
     B = cs_spalloc(this->nrow, this->ncol, this->nval, 1, 1);
     thismm = SpMM(this, this);
 
-    thismmCS = ConvertMyCSparseToCS(thismm);
+    thismmCS = ConvertMyCSparseToCS(&thismm);
     
     cs_print(thismmCS, i);
 
@@ -84,7 +85,7 @@ main()
     //cs_print(C, i);
 
 
+    return 0;
 };
-
 
 

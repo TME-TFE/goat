@@ -1676,11 +1676,7 @@ module ggmod_topology2D
             if (sID(1) == 1) then 
                 sID = [sID, bndpol(i)%ne]
                 eID = [eID, eID(1)]
-            end if 
-            if (sID(size(sID)) == bndpol(i)%ne .and. (sID(1) /= 1)) then 
-                sID = [1, sID]
-                eID = [eID(size(eID)), eID]
-            end if 
+            end if  
             call ExtractTopologicalFacesFromPolygon(bndpol(i), eID, sID, &
                 tx, ty, vf1, vf2, xf, yf)  
             deallocate (sortind) 

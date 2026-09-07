@@ -1297,6 +1297,7 @@ module GOAT_tests
             vtest(:, :), cval(:), ea(:), xw(:), yw(:)
         integer(I8)                     :: nx, ny
         integer(I8), allocatable        :: order(:), eai(:)
+        logical, allocatable            :: issaddle(:)
         type(ContourUDT), allocatable   :: contours(:)
         type(RealDynamicArrayUDT)       :: xc, yc 
 
@@ -1329,10 +1330,11 @@ module GOAT_tests
 
         ! Set saddle points (empty arrays)
         allocate(ea(0), order(0), eai(0))
+        allocate(issaddle(0))
 
         ! Trace
         call TraceContoursStructured2D(vtest, xgv, ygv, cval, ea, ea, ea, &
-            eai, order, contours)
+            eai, issaddle, order, contours)
 
         ! Visualize
         !==========
@@ -1370,6 +1372,7 @@ module GOAT_tests
         use ggmod_topology2D 
         use goatmod_userinput
         use ggmod_gridgeneration2D
+        use mod_streamlinetracing2D
         
         ! Declare variables
         !==================
@@ -1377,18 +1380,24 @@ module GOAT_tests
         character(:), allocatable       :: meth 
         real(R8)                        :: Lx, Ly 
         real(R8), allocatable           :: xgv(:), ygv(:), xg(:), yg(:), &
-            vtest(:, :), cval(:), ea(:), xw(:), yw(:), xp(:), yp(:)
+            vtest(:, :), cval(:), ea(:), xw(:), yw(:), xp(:), yp(:), &
+            Vfx(:), Vfy(:), Vv(:)
         integer(I8)                     :: nx, ny
         integer(I8), allocatable        :: order(:) 
         type(ContourUDT), allocatable   :: contours(:)
         class(ContourTracerUDT), allocatable    :: fieldtracer, vesseltracer
+        class(StreamlineTracerUDT), allocatable :: streamlinetracer
         type(RealDynamicArrayUDT)       :: xc, yc 
         type(magneticFieldUDT)          :: magneticField 
         type(VesselUDT)                 :: vessel 
         type(TopomeshUDT)               :: topomesh 
+        type(GridUDT)                   :: simgrid
         type(PLF2DClosedExactOptionsUDT)    :: plfoptions
         type(TopomeshOptionsUDT)        :: topoptions
         type(GGOptionsUDT)              :: ggoptions
+        real(R8), parameter             :: emptyR8(0)= 0
+        integer(I8), parameter          :: emptyI8(0) = 0
+        logical, parameter              :: emptyL(0) = .false.
 
         ! Loop
         integer(I8)                     :: k 
@@ -1420,11 +1429,15 @@ module GOAT_tests
         meth = 'uniformgrid'
         call magneticField%interp%SetParameters(meth, 3, 6)
         call magneticField%interp%Construct(xgv, ygv, vtest)
+        allocate(Vfx(nx*ny), Vfy(nx*ny), Vv(nx*ny))
+        call magneticField%interp%Evaluate(xg, yg, 1, 0, Vfx)
+        call magneticField%interp%Evaluate(xg, yg, 0, 1, Vfy)
 
         ! Construct vessel polygon set (exact representation for now)
         call vessel%polygonset%Construct(xp, yp)
         call InitializePolygonLevelsetFunction2D(vessel%plfvessel, vessel%polygonset, &
             plfoptions)
+        call vessel%plfvessel%Evaluate(xg, yg, 0, 0, Vv)
 
         ! Set the default topomesh options
         call topoptions%SetDefaults()
@@ -1434,15 +1447,28 @@ module GOAT_tests
         ! Set the default grid generation options
         call ggoptions%SetDefaults()
 
+        ! Construct tracers
+        !==================
+        fieldtracer = ConstructStructuredTracer(vtest, xgv, ygv, &
+            emptyR8, emptyR8, emptyR8, emptyI8, emptyL, topoptions%npmin, &
+            topoptions%npmax, topoptions%dl)
+        vesseltracer = ConstructStructuredTracer(&
+            reshape(Vv, [nx, ny]), xgv, ygv, &
+            emptyR8, emptyR8, emptyR8, emptyI8, emptyL, topoptions%npmin, &
+            topoptions%npmax, topoptions%dl)
+        streamlinetracer = ConstructStructuredStreamlineTracer(&
+            reshape(Vfx, [nx, ny]), reshape(Vfy, [nx, ny]), xgv, ygv, &
+            step=ggoptions%orthtracerstep, nsteps=ggoptions%orthtracernsteps)
+
         ! Construct topological mesh
         !===========================
         call ConstructTopologicalMesh(vessel, magneticField, topoptions, &
-            topomesh, fieldtracer, vesseltracer)      
+            topomesh, fieldtracer, vesseltracer, streamlinetracer)      
             
         ! Construct grid
         !===============
-        call GenerateUnstructuredAlignedGrid(topomesh, magneticField, &
-            vessel, fieldtracer, vesseltracer, ggoptions)
+        call GenerateUnstructuredAlignedGrid(simgrid, topomesh, magneticField, &
+            vessel, fieldtracer, vesseltracer, streamlinetracer, ggoptions)
 
     end subroutine
 

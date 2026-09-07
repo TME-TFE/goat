@@ -1574,7 +1574,7 @@ class GridInterpolant2D:
                         dist[mindistind] = np.inf 
                     
                     if (all(dist == np.inf) and (not isincell)):
-                        vq[i] = np.NaN # set to nan and return 
+                        vq[i] = np.nan # set to nan and return
                     else:
 
                         dx = txq - self.x[mindistind]
@@ -1607,7 +1607,7 @@ class GridInterpolant2D:
                         dist[mindistind] = np.inf 
 
                     if (all(dist == np.inf) and (not isincell)):
-                        vq[i] = np.NaN # set to nan and return 
+                        vq[i] = np.nan # set to nan and return
                     else:
                         # Compute poloidal (parallel) and radial (perpendicular) distance
                         dtheta = dx*self.bx[mindistind] + dy*self.by[mindistind]

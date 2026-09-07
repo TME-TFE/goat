@@ -1170,8 +1170,8 @@ def PlotGGTMDataFaceVertexDistribution(ggtmdata, topomesh, fignum):
                 fignum, color='m', marker='.')
         
     # Check bounds
-    xb = [np.Infinity, -np.Infinity]
-    yb = [np.Infinity, -np.Infinity]
+    xb = [np.inf, -np.inf]
+    yb = [np.inf, -np.inf]
     for i in np.arange(0, topomesh.face.ntot, 1):
         xb[0] = np.min([xb[0], np.min(topomesh.face.data[i].x)])
         xb[1] = np.max([xb[1], np.max(topomesh.face.data[i].x)])
@@ -1193,8 +1193,8 @@ def PlotGGTMDataCellVertexDistribution(ggtmdata, topomesh, fignum):
     # Plot all vertices that were distributed on cells only
 
     # Initialize plotting bounds
-    xb = [np.Infinity, -np.Infinity]
-    yb = [np.Infinity, -np.Infinity]
+    xb = [np.inf, -np.inf]
+    yb = [np.inf, -np.inf]
 
     # Loop over all cells
     for thiscell in ggtmdata.cell:
@@ -1266,20 +1266,20 @@ def PlotGridFaces(grid, fignum):
     for i in aligned: 
         xfal[3*cc] = grid.vert.x[grid.face.v1[i]-1]
         xfal[3*cc+1] = grid.vert.x[grid.face.v2[i]-1]
-        xfal[3*cc+2] = np.NaN 
+        xfal[3*cc+2] = np.nan
         yfal[3*cc] = grid.vert.y[grid.face.v1[i]-1]
         yfal[3*cc+1] = grid.vert.y[grid.face.v2[i]-1]
-        yfal[3*cc+2] = np.NaN
+        yfal[3*cc+2] = np.nan
         cc = cc + 1 
 
     cc = 0
     for i in nonaligned: 
         xfnonal[3*cc] = grid.vert.x[grid.face.v1[i]-1]
         xfnonal[3*cc+1] = grid.vert.x[grid.face.v2[i]-1]
-        xfnonal[3*cc+2] = np.NaN 
+        xfnonal[3*cc+2] = np.nan
         yfnonal[3*cc] = grid.vert.y[grid.face.v1[i]-1]
         yfnonal[3*cc+1] = grid.vert.y[grid.face.v2[i]-1]
-        yfnonal[3*cc+2] = np.NaN 
+        yfnonal[3*cc+2] = np.nan
         cc = cc + 1 
     
     # Plot faces
@@ -1307,10 +1307,10 @@ def PlotGridCells(grid, fignum):
         tv = grid.cell.GetVert(i)-1
         xc[counter:counter+nvc] = grid.vert.x[tv]
         xc[counter+nvc] = grid.vert.x[tv[0]]
-        xc[counter+nvc+1] = np.NaN
+        xc[counter+nvc+1] = np.nan
         yc[counter:counter+nvc] = grid.vert.y[tv]
         yc[counter+nvc] = grid.vert.y[tv[0]]
-        yc[counter+nvc+1] = np.NaN
+        yc[counter+nvc+1] = np.nan
 
         counter = counter + nvc + 2
     
@@ -1493,10 +1493,10 @@ def PlotTriaCells(tria, fignum):
         tv = tria.cell.vert[i,:]-1
         xc[counter:counter+3] = tria.vert.x[tv]
         xc[counter+3] = tria.vert.x[tv[0]]
-        xc[counter+4] = np.NaN
+        xc[counter+4] = np.nan
         yc[counter:counter+3] = tria.vert.y[tv]
         yc[counter+3] = tria.vert.y[tv[0]]
-        yc[counter+4] = np.NaN
+        yc[counter+4] = np.nan
 
         counter = counter + 5
     
@@ -2227,7 +2227,7 @@ def GetColorsFromValue(val, minval, maxval):
 
     return col
 
-def PlotCellBasedQuantity2D(grid, val, fignum, bounds=[-np.Inf, np.Inf], doguardcells=True):
+def PlotCellBasedQuantity2D(grid, val, fignum, bounds=[-np.inf, np.inf], doguardcells=True):
     # Description
     #------------
     # Make a patchplot of a cell based quantity. If guard cells are 
@@ -2379,7 +2379,6 @@ def PlotTMCellBasedQuantity(topomesh, val, fignum):
 
     # Set axes
     SetAxesLimits2D(plt.gca(), topomesh.vert.x, topomesh.vert.y)
-
 
 
 

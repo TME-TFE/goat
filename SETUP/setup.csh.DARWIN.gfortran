@@ -1,0 +1,80 @@
+setenv SYSNAME `uname`_`arch`
+alias gmake make
+if ( ! $?MISSING_DEPENDENCY ) set MISSING_DEPENDENCY = 0
+
+# Initialize the path collections, if they do not exist already
+
+if ( ! $?LD_LIBRARY_PATH ) then
+    setenv LD_LIBRARY_PATH
+endif
+if ( ! $?PKG_CONFIG_PATH ) then
+    setenv PKG_CONFIG_PATH
+endif
+
+# Check if main development environment and package managers are installed
+
+if ( `which brew >& /dev/null; echo $status` != 0 ) then
+    echo "Warning: Homebrew installation not found. Install it from https://brew.sh/."
+else
+    setenv PATH "${PATH}:`brew --prefix`/bin"
+    setenv LD_LIBRARY_PATH "${LD_LIBRARY_PATH}:`brew --prefix`/lib"
+    setenv LD_LIBRARY_PATH "${LD_LIBRARY_PATH}:`brew --prefix openblas`/lib"
+    setenv LD_LIBRARY_PATH "${LD_LIBRARY_PATH}:`brew --prefix suite-sparse`/lib"
+endif
+
+if ( `which python >& /dev/null; echo $status` != 0 ) then
+    echo "Warning: python installation not found. Install it using your preferred method."
+else
+    setenv PATH "${PATH}:`which python | xargs dirname`"
+    setenv LD_LIBRARY_PATH "${LD_LIBRARY_PATH}:`which python | xargs dirname`/../lib"
+endif
+
+# Add directories of compiled libraries, include directives, etc.
+
+setenv OPENBLAS_HOME `brew --prefix openblas`
+setenv SUITESPARSE_HOME `brew --prefix suite-sparse`
+setenv LAPACK_DIR `brew --prefix lapack`
+
+setenv LAPACKPATH "-L${LAPACK_DIR}/lib -llapack"
+setenv BLASPATH "-L${OPENBLAS_HOME}/lib -lopenblas"
+setenv UMFPACKPATH "-L${SUITESPARSE_HOME}/lib -lumfpack"
+setenv CXSparsePATH "-L${SUITESPARSE_HOME}/lib"
+setenv SUITESPARSEPATH "-I${SUITESPARSE_HOME}/include/suitesparse"
+
+# Define compilers
+
+setenv CC gcc
+setenv FC gfortran
+setenv MPI_FC mpif90
+setenv CXX g++
+
+# Check if external libraries are installed
+
+if ( `brew list | grep -c '^gcc$'` == 0 ) then
+    set MISSING_DEPENDENCY = 1
+endif
+if ( `brew list | grep -c '^cmake$'` == 0 ) then
+    set MISSING_DEPENDENCY = 1
+endif
+if ( `brew list | grep -c '^lapack$'` == 0 ) then
+    set MISSING_DEPENDENCY = 1
+endif
+if ( `brew list | grep -c '^openblas$'` == 0 ) then
+    set MISSING_DEPENDENCY = 1
+endif
+if ( `brew list | grep -c '^suite-sparse$'` == 0 ) then
+    set MISSING_DEPENDENCY = 1
+endif
+if ( ! -e "${SUITESPARSE_HOME}/include/suitesparse/cs.h" ) then
+    set MISSING_DEPENDENCY = 1
+endif
+if ( ! -e "${SUITESPARSE_HOME}/lib/libcxsparse.dylib" ) then
+    set MISSING_DEPENDENCY = 1
+endif
+if ( ! -e "${SUITESPARSE_HOME}/lib/libumfpack.dylib" ) then
+    set MISSING_DEPENDENCY = 1
+endif
+
+if ( $?MISSING_DEPENDENCY && "$MISSING_DEPENDENCY" == "1" ) then
+    echo "Warning: some dependencies are not installed. Install them using your preferred method."
+endif

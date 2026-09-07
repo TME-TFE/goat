@@ -26,14 +26,20 @@ Having these dependencies installed, the code is installed as follows:
 - open a clean tcsh terminal
 - clone the git repository
 - `cd` into the top folder after cloning and execute `source setup.csh`. This will load in the necessary environment variables for compilation.
+
+### Using the old makefile (will become deprecated in the future)
 - To compile goat, execute `make goat` (or `make goat_debug`) to compile the executable name `goat.exe` and `goat_debug.exe`. After compilation, these should be found in the executables again.
 - To link properly to the newly compiled executables, rerun `source setup.csh` again
+
+### Using CMake
+- Running the 'build.sh' script in the main folder will build the basic 'Debug' and 'Release' versions of the code automatically. The resulting executables are stored in a different location and linked to using symbolic links 'goat_debug.exe' and 'goat.exe', such that, usage-wise, nothing should change (these paths are added in the setup.csh script, so executing 'goat_debug.exe' in a case folder should work exactly the same as before)
+- Note that currently, any environment-specific compiler settings etc are ignored (unless specified in CMake variables before). This remains to be improved in the future. 
 
 To test if installation was successful, try one of the example cases (see Usage section below). 
 
 ## Usage
 To use goat, first compile it (see section Installation) to retrieve the goat executable `goat.exe` or `goat_debug.exe`. To run an example case (e.g. the ASDEX grid generation case), do the following steps:
-- open a clean tcsh terminal, `cd` to the top goat directory
+- open a clean tcsh terminal, `cd` to the top goat directory (note: if you compiled for the first time and work in the same terminal, the shell cache may not have been updated with the newly constructed symlinks/executables. For tcsh, type `rehash` to refresh this, or open a new terminal)
 - create a `setup.csh` file for your machine/cluster, if not already present
 - execute `source setup.csh`
 - go to the example case (i.e. execute `cd ./Examples/ASDEX`)
@@ -49,9 +55,10 @@ To run this case, follow the steps above for the example case, but go `./Runs/<n
 
 ## Known issues
 - The current make-based build system does not always capture all dependencies - improvements welcome! In case of issues, run `make deepclean` to remove all intermediate files and build folders such that recompilation happens from scratch.
+- The Cmake approach currently only covers the goat executable, but not yet others (which are not typically used).
 
 ## Known behavior that is not an issue
-- If one uses SOLPS and has sourced that setup file, the compilation and running of goat may be hampered. Solution: use a clean terminal as described above
+- If one uses SOLPS and has sourced that setup file, the compilation and running of goat may be hampered. Solution: use a clean terminal as described above. For CMake, this shouldn't be a problem yet, since executables that would use SOLPS are not yet supported and implemented. 
 
 ## Support
 In case of issues, please contact either the developer(s) at KU Leuven or their supervisors:
@@ -59,7 +66,7 @@ In case of issues, please contact either the developer(s) at KU Leuven or their 
 - Wouter Dekeyser (wouter.dekeyser@kuleuven.be) -> supervisor
 
 ## Contributing
-Contributions by the community, be it bugfixes, build improvements, or completely new features, are very much welcome! For large or fundamental changes, please first contact the developers to discuss this further. Other improvements can be done through pull requests after review by the main devs. 
+Contributions by the community, be it bugfixes, build improvements, or completely new features, are very much welcome! For large or fundamental changes, please first contact the developers to discuss this further. Other improvements can be done through pull requests after review by the main devs. For more detailed guidelines on how to use the build system etc, please see the Contributing.md document. 
 
 ## Authors and acknowledgment
 Please see the description for authors and reference papers for the different modules of goat. The authors are very grateful for the many interesting testcases provided by the plasma edge modelling community that helped shape this toolbox. 

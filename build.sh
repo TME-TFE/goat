@@ -6,6 +6,13 @@
 mkdir build-debug
 mkdir build-release
 
+# Add top directory to the path variable, if not there already
+if [[ ! -v GOATTOP ]]; then
+    echo "GOATTOP variable is not defined, not adding to path. Do source setup.csh first"
+elif [[ ":$PATH:" != *":$GOATTOP:"* ]]; then
+    export PATH="$GOATTOP:$PATH"
+fi
+
 # Execute cmake
 cmake -S . -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
 cmake --build build-debug --target goat --verbose
@@ -18,7 +25,3 @@ cmake --install build-release --prefix ./executables/Release
 ln -sfn ./executables/Debug/goat goat_debug.exe
 ln -sfn ./executables/Release/goat goat.exe
 
-# Add top directory to the path variable, if not there already
-if ( ":${PATH}:" !~ *":${GOATTOP}:"* ) then
-    setenv PATH "${GOATTOP}:${PATH}"
-endif

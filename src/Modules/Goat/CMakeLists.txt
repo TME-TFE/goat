@@ -17,6 +17,8 @@ target_link_libraries(goatmod_types PUBLIC
     PolygonLevelsetFunction2D
     mod_std_formatspecs
     PolygonShapeFunction)
+target_link_libraries(goatmod_types PRIVATE 
+    goat_openmp)
 
 # goatmod_userinput
 add_library(goatmod_userinput STATIC 

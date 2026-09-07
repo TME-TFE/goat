@@ -16,6 +16,8 @@ target_link_libraries(DistributionFunction PUBLIC
     mod_polygon
     PolygonLevelsetFunction2D
     mod_structured2Dgridding)
+target_link_libraries(DistributionFunction PRIVATE 
+    goat_openmp)
 
 # mod_lagrangefunctions
 add_library(mod_lagrangefunctions STATIC 
@@ -37,6 +39,8 @@ target_link_libraries(PolygonLevelsetFunction2D PUBLIC
     mod_polygon
     mod_sparseinterface
     mod_structured2Dgridding)
+target_link_libraries(PolygonLevelsetFunction2D PRIVATE 
+    goat_openmp)
 
 # Library containing all libraries in Numerics
 add_library(Numerics INTERFACE)

@@ -67,6 +67,8 @@ target_link_libraries(mod_polygon PUBLIC
     mod_plotter
     mod_sort
     mod_constants)
+target_link_libraries(mod_polygon PRIVATE 
+    goat_openmp)
 
 # mod_readwrite
 add_library(mod_readwrite STATIC mod_readwrite.F90)
@@ -97,6 +99,8 @@ target_link_libraries(mod_sparseinterface PUBLIC
     mod_precision
     mod_errorhandler
     clayer)
+target_link_libraries(mod_sparseinterface PRIVATE 
+    goat_openmp)
 
 # mod_utility
 add_library(mod_utility STATIC mod_utility.F90)

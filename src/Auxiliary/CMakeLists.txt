@@ -18,6 +18,8 @@ setup_fortran_target(mod_streamlinetracing2D)
 
 target_link_libraries(mod_streamlinetracing2D PUBLIC 
     mod_precision mod_errorhandler mod_linearsolverinterface mod_dynamicarrays mod_structured2Dgridding)
+target_link_libraries(mod_streamlinetracing2D PRIVATE 
+    goat_openmp)
 
 # mod_structured2Dgridding
 add_library(mod_structured2Dgridding STATIC

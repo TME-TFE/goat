@@ -30,6 +30,8 @@ target_link_libraries(Interpolant2D_auxiliaries PUBLIC
     mod_errorhandler
     mod_sort
     mod_triangulation)
+target_link_libraries(Interpolant2D_auxiliaries PRIVATE 
+    goat_openmp) 
 
 # Interpolant2D
 add_library(Interpolant2D STATIC
@@ -56,6 +58,8 @@ target_link_libraries(StructuredInterpolant2D PUBLIC
     mod_constants
     mod_sparseinterface
     mod_linearsolverinterface)
+target_link_libraries(StructuredInterpolant2D PRIVATE 
+    goat_openmp) 
 
 # UnstructuredInterpolation2D
 add_library(UnstructuredInterpolation2D STATIC
@@ -68,6 +72,8 @@ target_link_libraries(UnstructuredInterpolation2D PUBLIC
     mod_utility
     Interpolant2D
     Interpolant2D_auxiliaries)
+target_link_libraries(UnstructuredInterpolation2D PRIVATE 
+    goat_openmp) 
 
 # Library of all routines in Interpolation
 add_library(Interpolation INTERFACE)

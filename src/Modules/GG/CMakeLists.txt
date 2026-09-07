@@ -11,6 +11,8 @@ target_link_libraries(ggmod_gridgeneration2D PUBLIC
     goatmod_userinput
     ggmod_vertexdistribution2D
     ggmod_topology2D)
+target_link_libraries(ggmod_gridgeneration2D PRIVATE 
+    goat_openmp)
 
 # ggmod_gridgenerator
 add_library(ggmod_gridgenerator STATIC 
@@ -36,6 +38,8 @@ target_link_libraries(ggmod_topology2D PUBLIC
     Numerics
     goatmod_types
     goatmod_userinput)
+target_link_libraries(ggmod_topology2D PRIVATE 
+    goat_openmp)
 
 # ggmod_vertexdistribution2D
 add_library(ggmod_vertexdistribution2D STATIC 

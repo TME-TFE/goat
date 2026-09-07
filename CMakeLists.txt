@@ -46,6 +46,9 @@ if(DEFINED ENV{SOLPSTOP})
         "SOLPSTOP is defined which implies that setup.csh of SOLPS is sourced. This may lead to unexpected behavior - please use a clean terminal")
 endif()
 
+# Options for compiling parallel builds
+option(GOAT_ENABLE_OPENMP "Enable OpenMP support" ON)
+
 # Include cmake helper functions
 #-------------------------------
 include(cmake/SetupFortranTarget.cmake)
@@ -54,8 +57,6 @@ include(cmake/SetupFortranTarget.cmake)
 #---------------------------
 find_package(LAPACK REQUIRED)
 find_package(BLAS REQUIRED)
-find_package(OpenMP REQUIRED)
-
 
 find_library(UMFPACK_LIB umfpack REQUIRED)
 find_library(AMD_LIB amd REQUIRED)
@@ -69,6 +70,23 @@ find_path(SUITESPARSE_INCLUDE_DIR
     PATH_SUFFIXES suitesparse
     REQUIRED
 )
+
+# Include openmp library
+#-----------------------
+# General openmp target library to link with if code uses openmp - will 
+# be empty if no openmp is enabled, so openmp directives are ignored
+add_library(goat_openmp INTERFACE) # empty if no openmp is present
+if(GOAT_ENABLE_OPENMP)
+    message(STATUS "OpenMP enabled, compiling goat with OpenMP")
+    find_package(OpenMP REQUIRED)
+    target_link_libraries(goat_openmp INTERFACE 
+        OpenMP::OpenMP_Fortran
+        OpenMP::OpenMP_C)
+else()
+    message(STATUS "OpenMP disabled, compiling goat without OpenMP")
+endif() 
+    
+
 
 
 # Program dependencies

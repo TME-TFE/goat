@@ -25,7 +25,7 @@ target_link_libraries(goat PRIVATE
     BLAS::BLAS
     LAPACK::LAPACK
 
-    OpenMP::OpenMP_Fortran)
+    goat_openmp)
 
 # Installation
 install(TARGETS goat
@@ -58,7 +58,7 @@ target_link_libraries(shapeopt PRIVATE
     BLAS::BLAS
     LAPACK::LAPACK
 
-    OpenMP::OpenMP_Fortran)
+    goat_openmp)
 
 # Installation
 install(TARGETS shapeopt

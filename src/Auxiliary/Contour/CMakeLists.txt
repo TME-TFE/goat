@@ -16,6 +16,8 @@ target_link_libraries(mod_contour2D PUBLIC
     mod_specialchars
     mod_definitions
     mod_inputfileparser)
+target_link_libraries(mod_contour2D PRIVATE 
+    goat_openmp)
 
 # Library of all routines in Contour
 add_library(Contour INTERFACE)

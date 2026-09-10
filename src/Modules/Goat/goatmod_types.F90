@@ -918,13 +918,13 @@ module goatmod_types
     
         ! First, read the header with the version
         call ReadSingleLine(filespec, chardummy, reachedeof)
-        if (reachedeof) then 
+        if (reachedeof) then
             call gdErrorHandler('ReadTraduitUS: reached EOF prematurely')
         end if 
     
         ! Check the version to determine what to read in 
         readTopologicalData = .false. 
-        if (chardummy(8:17) >= '03.002.001') then 
+        if (chardummy(8:17) >= '03.002.002') then
             ! Topological data should be present
             readTopologicalData = .true.
         end if 
@@ -1392,7 +1392,7 @@ module goatmod_types
 
         ! Check the version to determine what to read in 
         readTopologicalData = .false. 
-        if (chardummy(8:17) >= '03.002.001') then 
+        if (chardummy2(8:17) >= '03.002.002') then
             ! Topological data should be present
             readTopologicalData = .true.
         end if 
@@ -2149,7 +2149,7 @@ module goatmod_types
         !======
         ! Version
         if (goatoptions%write_topologicaldata) then 
-            gridversion = '03.002.001'
+            gridversion = '03.002.002'
         else
             gridversion = '03.002.000'
         end if 
@@ -2229,7 +2229,7 @@ module goatmod_types
             tempstring  = '*cf: div divFcP(:,1) divFcP(:,2)'
             write(fu, '(a)' ) tempstring 
             do i = 1, nDiv
-                fmt = '(3'//Ifm//')' 
+                fmt = '(3'//Ifm//')'
                 write (fu, fmt) i, divFcP(i, 1), divFcP(i, 2)
             end do
     

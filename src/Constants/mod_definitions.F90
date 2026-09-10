@@ -67,5 +67,5 @@ module mod_definitions
    
     ! Topological mesh identification number
     integer(I8), parameter :: TMTopSN = 1, TMTopDN = 2, TMTopGeneral = 0, &
-        TMTopL = 3
+        TMTopL = 3, TMTopLM = 4
 end module

@@ -950,7 +950,7 @@ module ggmod_topology2D
         end do 
 
         ! Compute intersections
-        !$omp parallel do default(none) schedule(dynamic) collapse(2) &
+        !$omp parallel do default(none) schedule(dynamic) collapse(2) ordered &
         !$omp shared(fxp, fyp, magneticField, fxpeid, fxpsid, fxpsrid, &
         !$omp fypeid, fypsid, fypsrid, xc, yc, fc, tc, ec, nfxc, nfyc, donewton) & 
         !$omp private(i, j, tx, ty, ts1, ts2, tsr1, tsr2, nx, tt, k, &
@@ -1012,8 +1012,13 @@ module ggmod_topology2D
                         tt(k) = 0;
                     end if
 
-                    ! Update counter
-                    !$omp critical
+                end do
+
+                ! Store IDs, connectivity, and values together so each
+                ! extremum ID remains aligned with its coordinate-array index
+                ! when contour pairs are processed by different threads.
+                !$omp ordered
+                do k = 1, nx
                     ec = ec + 1
 
                     ! Store intersection data
@@ -1023,16 +1028,13 @@ module ggmod_topology2D
                     call fypeid(j)%Append(ec)
                     call fypsid(j)%Append(ts2(k))
                     call fypsrid(j)%Append(tsr2(k))
-                    !$omp end critical
-                end do 
+                end do
 
-                ! Append
-                !$omp critical
                 call xc%Append(tx)
                 call yc%Append(ty)
                 call fc%Append(tf)
                 call tc%Append(tt)
-                !$omp end critical
+                !$omp end ordered
 
                 ! Housekeeping
                 deallocate(tt, tf, tfxx, tfyy, tfxy)
@@ -15676,9 +15678,11 @@ module ggmod_topology2D
 
         ! Description
         !============
-        ! This function returns the vertex indices that are strike 
-        ! points. Strike points are defined as boundary points of which
-        ! at least one face is a separatrix segment.
+        ! This function returns the vertex indices that are strike
+        ! points. Strike points are boundary points on a connected
+        ! separatrix component that contains an X-point. A disconnected
+        ! boundary-to-boundary contour at a separatrix flux value is not
+        ! a strike-point separatrix.
         
         ! Declare variables
         !==================
@@ -15687,35 +15691,73 @@ module ggmod_topology2D
         integer(I8), allocatable    :: ID(:)
 
         ! Auxiliary
-        integer(I8), allocatable, dimension(:)  :: tempID, tv
-        logical, allocatable, dimension(:)      :: temp
+        integer(I8), allocatable, dimension(:)  :: sepfaceIDs, &
+            facevertices, sepfaces, component, stack
+        logical, allocatable, dimension(:)      :: isstrikepoint, visited
+        logical                                 :: hassaddle
 
         ! Loop
-        integer(I8)                 :: i, j
+        integer(I8)                 :: i, j, k, l, currentv, ncomponent, &
+            nstack
 
         ! Get
         !====
         ! Find separatrix faces
-        tempID = topomesh%GetSeparatrixFaceIDs()
+        sepfaceIDs = topomesh%GetSeparatrixFaceIDs()
 
-        ! Check which separatrix faces have a boundary vertex
-        allocate(temp(topomesh%vert%ntot))
-        temp = .false. 
-        do i = 1, size(tempID)
-            ! Get face vertices
-            tv = topomesh%face%vert(tempID(i), :)
+        ! Traverse each connected separatrix component. Only boundary
+        ! vertices belonging to a component with a saddle are strike
+        ! points.
+        allocate(isstrikepoint(topomesh%vert%ntot), &
+            visited(topomesh%vert%ntot), component(topomesh%vert%ntot), &
+            stack(topomesh%vert%ntot))
+        isstrikepoint = .false.
+        visited = .false.
+        do i = 1, size(sepfaceIDs)
+            facevertices = topomesh%face%vert(sepfaceIDs(i), :)
+            if (visited(facevertices(1))) cycle
 
-            ! Check
-            do j = 1, size(tv)
-                if (topomesh%vert%type(tv(j)) == TMvertexbndID) then 
-                    temp(tv(j)) = .true.
-                end if 
-            end do 
-        end do 
+            nstack = 1
+            stack(nstack) = facevertices(1)
+            visited(facevertices(1)) = .true.
+            ncomponent = 0
+            hassaddle = .false.
+
+            do while (nstack > 0)
+                currentv = stack(nstack)
+                nstack = nstack - 1
+                ncomponent = ncomponent + 1
+                component(ncomponent) = currentv
+                if (topomesh%vert%type(currentv) == &
+                    TMvertexsaddleID) hassaddle = .true.
+
+                sepfaces = topomesh%vert%GetFace(currentv)
+                sepfaces = pack(sepfaces, &
+                    topomesh%face%type(sepfaces) == TMfacesepID)
+                do k = 1, size(sepfaces)
+                    facevertices = topomesh%face%vert(sepfaces(k), :)
+                    do l = 1, size(facevertices)
+                        if (.not. visited(facevertices(l))) then
+                            nstack = nstack + 1
+                            stack(nstack) = facevertices(l)
+                            visited(facevertices(l)) = .true.
+                        end if
+                    end do
+                end do
+            end do
+
+            if (hassaddle) then
+                do k = 1, ncomponent
+                    currentv = component(k)
+                    if (topomesh%vert%type(currentv) == &
+                        TMvertexbndID) isstrikepoint(currentv) = .true.
+                end do
+            end if
+        end do
 
         ! Get indices
-        allocate(ID(count(temp)))
-        ID = pack([(j, j = 1, topomesh%vert%ntot)], temp)
+        allocate(ID(count(isstrikepoint)))
+        ID = pack([(j, j = 1, topomesh%vert%ntot)], isstrikepoint)
 
     end function
 
@@ -16038,10 +16080,10 @@ module ggmod_topology2D
 
         ! Auxiliary
         logical                                 :: issinglenull, &
-            isdoublenull, islinear
+            isdoublenull, islinear, islimiter
         integer(I8)                             :: nxp, nop, nwgc, nsp, &
-            ncc
-        integer(I8), allocatable, dimension(:)  :: xp, op, wgc, sp, cc
+            ncc, ntp
+        integer(I8), allocatable, dimension(:)  :: xp, op, wgc, sp, cc, tp
 
         ! Initialize
         !===========
@@ -16060,6 +16102,10 @@ module ggmod_topology2D
         sp = topomesh%GetStrikePointIDs()
         nsp = size(sp)
 
+        ! Closed contour tangency points
+        tp = topomesh%GetClosedContourTangencyPointIDs()
+        ntp = size(tp)
+
         ! Get all wide grid cells
         wgc = topomesh%GetWideGridCellIDs()        
         nwgc = size(wgc)
@@ -16072,13 +16118,26 @@ module ggmod_topology2D
         issinglenull = .true.
         isdoublenull = .true.
         islinear     = .true. 
+        islimiter    = .true.
 
         ! Linear case
         !============
         ! X-point and O-point checks
-        if (nxp /= 0 .or. nop /= 0) then 
+        if (nxp /= 0 .or. nop /= 0 .or. ntp /= 0 .or. ncc /= 0) then
             islinear = .false. 
         end if 
+
+        ! Limiter case
+        !=============
+        ! A limiter mesh has no X/O points, but it does have closed-flux
+        ! core topology. In practice this appears either as closed-contour
+        ! tangency points, or as core cells bounded by the core flux surface.
+        if (nxp /= 0 .or. nop /= 0) then
+            islimiter = .false.
+        end if
+        if (ntp == 0 .and. ncc == 0) then
+            islimiter = .false.
+        end if
 
         ! Single null
         !============        
@@ -16131,13 +16190,15 @@ module ggmod_topology2D
         ! Determine flag
         !===============
         ! Sanity checks
-        if (count([issinglenull, isdoublenull, islinear]) > 1) then 
+        if (count([issinglenull, isdoublenull, islinear, islimiter]) > 1) then
             ! Probably we missed something in the definition then
             print *, 'IdentifyTopologicalMeshType: multiple topologies ' // & 
                 'appear valid, this is likely a bug. Setting flag to ' // & 
                 'general flag...'
         elseif (islinear) then 
             TMlabel = TMTopL
+        elseif (islimiter) then
+            TMlabel = TMTopLM
         elseif (issinglenull) then 
             TMlabel = TMTopSN
         elseif (isdoublenull) then 

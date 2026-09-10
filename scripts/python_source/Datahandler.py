@@ -152,9 +152,9 @@ def GetVertexCoordinatesWithID(filepath):
         else:
             # Read
             values = i.split()
-            IDs[cc] = np.fromstring(values[0], dtype=int, count=1, sep=' ')
-            vals[cc, 0] = np.fromstring(values[1], dtype=float, count=1, sep=' ')
-            vals[cc, 1] = np.fromstring(values[2], dtype=float, count=1, sep=' ')
+            IDs[cc] = np.fromstring(values[0], dtype=int, count=1, sep=' ')[0]
+            vals[cc, 0] = np.fromstring(values[1], dtype=float, count=1, sep=' ')[0]
+            vals[cc, 1] = np.fromstring(values[2], dtype=float, count=1, sep=' ')[0]
             cc = cc + 1
 
     # Return values
@@ -388,13 +388,13 @@ def ReadTopomeshFile(filepath):
         values = alllines[i+j].split()
 
         # Add the values
-        topomesh.vert.ID[j] = np.fromstring(values[0], dtype=int, count=1, sep=' ')
-        topomesh.vert.x[j] = np.fromstring(values[1], dtype=float, count=1, sep=' ')
-        topomesh.vert.y[j] = np.fromstring(values[2], dtype=float, count=1, sep=' ')
-        topomesh.vert.type[j] = np.fromstring(values[3], dtype=int, count=1, sep=' ')
-        topomesh.vert.fsID[j] = np.fromstring(values[4], dtype=int, count=1, sep=' ')
-        topomesh.vert.fval[j] = np.fromstring(values[5], dtype=float, count=1, sep=' ')
-        topomesh.vert.BV[j] = np.fromstring(values[6], dtype=int, count=1, sep=' ')
+        topomesh.vert.ID[j] = int(values[0])
+        topomesh.vert.x[j] = float(values[1])
+        topomesh.vert.y[j] = float(values[2])
+        topomesh.vert.type[j] = int(values[3])
+        topomesh.vert.fsID[j] = int(values[4])
+        topomesh.vert.fval[j] = float(values[5])
+        topomesh.vert.BV[j] = int(values[6])
 
     # Read face data
     #---------------
@@ -422,13 +422,13 @@ def ReadTopomeshFile(filepath):
         values = alllines[i+j].split()
 
         # Add the values
-        topomesh.face.ID[j] = np.fromstring(values[0], dtype=int, count=1, sep=' ')
-        topomesh.face.fsID[j] = np.fromstring(values[1], dtype=int, count=1, sep=' ')
-        topomesh.face.type[j] = np.fromstring(values[2], dtype=int, count=1, sep=' ')
-        topomesh.face.vert[j, 0] = np.fromstring(values[3], dtype=int, count=1, sep=' ')
-        topomesh.face.vert[j, 1] = np.fromstring(values[4], dtype=int, count=1, sep=' ')
-        topomesh.face.BF[j] = np.fromstring(values[5], dtype=int, count=1, sep=' ')
-        topomesh.face.nc[j] = np.fromstring(values[6], dtype=int, count=1, sep=' ')
+        topomesh.face.ID[j] = int(values[0])
+        topomesh.face.fsID[j] = int(values[1])
+        topomesh.face.type[j] = int(values[2])
+        topomesh.face.vert[j, 0] = int(values[3])
+        topomesh.face.vert[j, 1] = int(values[4])
+        topomesh.face.BF[j] = int(values[5])
+        topomesh.face.nc[j] = int(values[6])
 
     # Update file position
     i = i + topomesh.face.ntot-1
@@ -454,8 +454,7 @@ def ReadTopomeshFile(filepath):
         if "face" in alllines[i]:
             # Get face ID
             values = alllines[i].split()
-            fID = np.fromstring(values[1], dtype=int, count=1, sep=' ')
-            fID = fID[0] - 1 
+            fID = int(values[1]) - 1
             counter = counter + 1
             if (counter == topomesh.face.ntot):
                 allfound = True 
@@ -467,9 +466,8 @@ def ReadTopomeshFile(filepath):
             topomesh.face.data[fID].Initialize(topomesh.face.nc[fID])
             for k in np.arange(0, topomesh.face.nc[fID], 1):
                 values = alllines[i+k].split()
-                this = np.fromstring(values[0], dtype=float, count=1)
-                topomesh.face.data[fID].x[k] = np.fromstring(values[0], dtype=float, count=1, sep=' ')
-                topomesh.face.data[fID].y[k] = np.fromstring(values[1], dtype=float, count=1, sep=' ')
+                topomesh.face.data[fID].x[k] = float(values[0])
+                topomesh.face.data[fID].y[k] = float(values[1])
 
             # Compute metrics
             topomesh.face.data[fID].ComputeMetrics()
@@ -508,8 +506,8 @@ def ReadTopomeshFile(filepath):
         values = alllines[i+j].split()
 
         # Add the values
-        topomesh.cell.ID[j] = np.fromstring(values[0], dtype=int, count=1, sep=' ')
-        topomesh.cell.nc[j] = np.fromstring(values[1], dtype=int, count=1, sep=' ')
+        topomesh.cell.ID[j] = int(values[0])
+        topomesh.cell.nc[j] = int(values[1])
 
     # Update file position
     i = i + topomesh.cell.ntot-1
@@ -531,7 +529,7 @@ def ReadTopomeshFile(filepath):
         values = alllines[i+j].split()
 
         # Add the values
-        topomesh.cell.vert[j] = np.fromstring(values[0], dtype=int, count=1, sep=' ')
+        topomesh.cell.vert[j] = int(values[0])
 
     # Get header position
     i = 0
@@ -577,8 +575,7 @@ def ReadTopomeshFile(filepath):
         if "cell" in alllines[i]:
             # Get cell ID
             values = alllines[i].split()
-            fID = np.fromstring(values[1], dtype=int, count=1, sep=' ')
-            fID = fID[0] - 1 
+            fID = int(values[1]) - 1
             counter = counter + 1
             if (counter == topomesh.cell.ntot):
                 allfound = True 
@@ -590,9 +587,8 @@ def ReadTopomeshFile(filepath):
             topomesh.cell.data[fID].Initialize(topomesh.cell.nc[fID])
             for k in np.arange(0, topomesh.cell.nc[fID], 1):
                 values = alllines[i+k].split()
-                this = np.fromstring(values[0], dtype=float, count=1)
-                topomesh.cell.data[fID].x[k] = np.fromstring(values[0], dtype=float, count=1, sep=' ')
-                topomesh.cell.data[fID].y[k] = np.fromstring(values[1], dtype=float, count=1, sep=' ')
+                topomesh.cell.data[fID].x[k] = float(values[0])
+                topomesh.cell.data[fID].y[k] = float(values[1])
 
             # Update position
             i = i + topomesh.cell.nc[fID]
@@ -628,8 +624,8 @@ def ReadTopomeshFile(filepath):
             values = alllines[i+j].split()
 
             # Add the values
-            topomesh.fs.ID[j] = np.fromstring(values[0], dtype=int, count=1, sep=' ')
-            topomesh.fs.psi[j] = np.fromstring(values[1], dtype=float, count=1, sep=' ')
+            topomesh.fs.ID[j] = int(values[0])
+            topomesh.fs.psi[j] = float(values[1])
 
     # Read flux tubes
     #----------------
@@ -666,7 +662,7 @@ def ReadTopomeshFile(filepath):
             values = alllines[i].split()
 
             # Add the values
-            topomesh.ft.face[j] = np.fromstring(values[0], dtype=int, count=1, sep=' ')
+            topomesh.ft.face[j] = int(values[0])
 
             # Update counter
             i = i + 1
@@ -678,8 +674,8 @@ def ReadTopomeshFile(filepath):
             values = alllines[i].split()
 
             # Add the values
-            topomesh.ft.faceP[j, 0] = np.fromstring(values[0], dtype=int, count=1, sep=' ')-1
-            topomesh.ft.faceP[j, 1] = np.fromstring(values[1], dtype=int, count=1, sep=' ')
+            topomesh.ft.faceP[j, 0] = int(values[0]) - 1
+            topomesh.ft.faceP[j, 1] = int(values[1])
 
             # Update counter
             i = i + 1
@@ -691,7 +687,7 @@ def ReadTopomeshFile(filepath):
             values = alllines[i].split()
 
             # Add the values
-            topomesh.ft.cell[j] = np.fromstring(values[0], dtype=int, count=1, sep=' ')
+            topomesh.ft.cell[j] = int(values[0])
 
             # Update counter
             i = i + 1
@@ -703,8 +699,8 @@ def ReadTopomeshFile(filepath):
             values = alllines[i].split()
 
             # Add the values
-            topomesh.ft.cellP[j, 0] = np.fromstring(values[0], dtype=int, count=1, sep=' ')-1
-            topomesh.ft.cellP[j, 1] = np.fromstring(values[1], dtype=int, count=1, sep=' ')
+            topomesh.ft.cellP[j, 0] = int(values[0]) - 1
+            topomesh.ft.cellP[j, 1] = int(values[1])
 
             # Update counter
             i = i + 1
@@ -806,8 +802,7 @@ def ReadGGTMDataFile(filepath):
         if "face" in alllines[i]:
             # Get face ID
             values = alllines[i].split()
-            fID = np.fromstring(values[1], dtype=int, count=1, sep=' ')
-            fID = fID[0] - 1 
+            fID = int(values[1]) - 1
             counter = counter + 1
 
             # Update position
@@ -817,9 +812,9 @@ def ReadGGTMDataFile(filepath):
             ggtmdata.face[fID].Initialize(ggtmdata.face[fID].nv, ggtmdata.face[fID].ID)
             for k in np.arange(0, ggtmdata.face[fID].nv, 1):
                 values = alllines[i+k].split()
-                ggtmdata.face[fID].vert[k] = np.fromstring(values[0], dtype=int, count=1, sep=' ')
-                ggtmdata.face[fID].x[k] = np.fromstring(values[1], dtype=float, count=1, sep=' ')
-                ggtmdata.face[fID].y[k] = np.fromstring(values[2], dtype=float, count=1, sep=' ')
+                ggtmdata.face[fID].vert[k] = np.fromstring(values[0], dtype=int, count=1, sep=' ')[0]
+                ggtmdata.face[fID].x[k] = np.fromstring(values[1], dtype=float, count=1, sep=' ')[0]
+                ggtmdata.face[fID].y[k] = np.fromstring(values[2], dtype=float, count=1, sep=' ')[0]
 
             # Update position
             i = i + ggtmdata.face[fID].nv
@@ -882,8 +877,7 @@ def ReadGGTMDataFile(filepath):
         if "cell" in alllines[i]:
             # Get cell ID
             values = alllines[i].split()
-            fID = np.fromstring(values[1], dtype=int, count=1, sep=' ')
-            fID = fID[0] - 1 
+            fID = int(values[1]) - 1
             counter = counter + 1
 
             # Read nl lines
@@ -904,9 +898,9 @@ def ReadGGTMDataFile(filepath):
                 # Read 
                 for cc in np.arange(0, nv, 1): 
                     values = alllines[i+cc+1].split()
-                    line.vert[cc] = np.fromstring(values[0], dtype=int, count=1, sep=' ')
-                    line.x[cc] = np.fromstring(values[1], dtype=float, count=1, sep=' ')
-                    line.y[cc] = np.fromstring(values[2], dtype=float, count=1, sep=' ')
+                    line.vert[cc] = np.fromstring(values[0], dtype=int, count=1, sep=' ')[0]
+                    line.x[cc] = np.fromstring(values[1], dtype=float, count=1, sep=' ')[0]
+                    line.y[cc] = np.fromstring(values[2], dtype=float, count=1, sep=' ')[0]
 
                 # Add line
                 if k == 0:
@@ -942,8 +936,7 @@ def ReadGGTMDataFile(filepath):
         if "cell" in alllines[i]:
             # Get cell ID
             values = alllines[i].split()
-            fID = np.fromstring(values[1], dtype=int, count=1, sep=' ')
-            fID = fID[0] - 1 
+            fID = int(values[1]) - 1
             counter = counter + 1
             i = i + 1
 
@@ -965,9 +958,9 @@ def ReadGGTMDataFile(filepath):
                 # Read 
                 for cc in np.arange(0, nvhf, 1): 
                     values = alllines[i+cc+1].split()
-                    vhf[cc] = np.fromstring(values[0], dtype=int, count=1, sep=' ')
-                    xhf[cc] = np.fromstring(values[1], dtype=float, count=1, sep=' ')
-                    yhf[cc] = np.fromstring(values[2], dtype=float, count=1, sep=' ')
+                    vhf[cc] = np.fromstring(values[0], dtype=int, count=1, sep=' ')[0]
+                    xhf[cc] = np.fromstring(values[1], dtype=float, count=1, sep=' ')[0]
+                    yhf[cc] = np.fromstring(values[2], dtype=float, count=1, sep=' ')[0]
 
                 # Update position
                 i = i + nvhf + 2
@@ -983,9 +976,9 @@ def ReadGGTMDataFile(filepath):
                 # Read 
                 for cc in np.arange(0, nvlf, 1): 
                     values = alllines[i+cc+1].split()
-                    vlf[cc] = np.fromstring(values[0], dtype=int, count=1, sep=' ')
-                    xlf[cc] = np.fromstring(values[1], dtype=float, count=1, sep=' ')
-                    ylf[cc] = np.fromstring(values[2], dtype=float, count=1, sep=' ')
+                    vlf[cc] = np.fromstring(values[0], dtype=int, count=1, sep=' ')[0]
+                    xlf[cc] = np.fromstring(values[1], dtype=float, count=1, sep=' ')[0]
+                    ylf[cc] = np.fromstring(values[2], dtype=float, count=1, sep=' ')[0]
 
                 # Add tube
                 ggtmdata.cell[fID].AddTube(k, xhf, yhf, vhf, xlf, ylf, vlf)
@@ -1457,7 +1450,7 @@ def ReadTraduitOutB2us(filepath):
     # Read version to determine what data to read in 
     temp = alllines[0].split(); temp = temp[0]
     version = temp[7:17]
-    topodataversion = '03.002.001'
+    topodataversion = '03.002.002'
 
     if version >= topodataversion:
         hasTopologicalData = True
@@ -1895,7 +1888,7 @@ def ReadGridFromB2fgmtryus(filepath):
     # Read version to determine what data to read in 
     temp = alllines[0].split(); temp = temp[0]
     version = temp[7:17]
-    topodataversion = '03.002.001'
+    topodataversion = '03.002.002'
 
     if version >= topodataversion:
         hasTopologicalData = True
@@ -2669,7 +2662,7 @@ def ReadRZPsiFromCSV(Rfilepath, Zfilepath, Psifilepath, separator):
     for j in np.arange(0, nZ):
         temp = alllines[j].split(separator)
         for i in np.arange(0, nR):
-            psi[i, j] = np.fromstring(temp[i], dtype=float, count=1, sep =' ')
+            psi[i, j] = np.fromstring(temp[i], dtype=float, count=1, sep =' ')[0]
 
     # Close file
     thisfile.close()
@@ -2685,11 +2678,11 @@ def ReadRZPsiFromCSV(Rfilepath, Zfilepath, Psifilepath, separator):
     tempnR = len(alllines[0].split(separator))
     if (tempnZ == nR and tempnR == 1):
         for i in np.arange(0, nR):
-            R[i] = np.fromstring(alllines[i], dtype=float, count=1, sep=' ')
+            R[i] = np.fromstring(alllines[i], dtype=float, count=1, sep=' ')[0]
     elif ((tempnZ == nZ and tempnR == nR) or (tempnZ == nZ and tempnR == 1)):
         temp = alllines[1].split(separator)
         for i in np.arange(0, nR):
-            R[i] = np.fromstring(temp[i], dtype=float, count=1, sep=' ')
+            R[i] = np.fromstring(temp[i], dtype=float, count=1, sep=' ')[0]
     else: 
         print('Trying transposing R coordinates')
         alllines = [' '.join(row) for row in zip(*[line.split(separator) for line in alllines])]
@@ -2697,11 +2690,11 @@ def ReadRZPsiFromCSV(Rfilepath, Zfilepath, Psifilepath, separator):
         tempnR = len(alllines[0].split(separator))
         if (tempnZ == nR and tempnR == 1):
             for i in np.arange(0, nR):
-                R[i] = np.fromstring(alllines[i], dtype=float, count=1, sep=' ')
+                R[i] = np.fromstring(alllines[i], dtype=float, count=1, sep=' ')[0]
         elif ((tempnZ == nZ and tempnR == nR) or (tempnZ == nZ and tempnR == 1)):
             temp = alllines[1].split(separator)
             for i in np.arange(0, nR):
-                R[i] = np.fromstring(temp[i], dtype=float, count=1, sep=' ')
+                R[i] = np.fromstring(temp[i], dtype=float, count=1, sep=' ')[0]
         else:
             # Shouldn't be happening
             raise ValueError('Inconsistent dimensions of R coordinates') 
@@ -2721,11 +2714,11 @@ def ReadRZPsiFromCSV(Rfilepath, Zfilepath, Psifilepath, separator):
     tempnR = len(alllines[0].split(separator))
     if ((tempnZ == nZ and tempnR == nR) or (tempnZ == nZ and tempnR == 1)):
         for i in np.arange(0, nZ):
-            Z[i] = np.fromstring(alllines[i], dtype=float, count=1, sep=' ')
+            Z[i] = np.fromstring(alllines[i], dtype=float, count=1, sep=' ')[0]
     elif (tempnZ == 1 and tempnR == nZ):
         temp = alllines[1].split(separator)
         for i in np.arange(0, nZ):
-            Z[i] = np.fromstring(temp[i], dtype=float, count=1, sep=' ')
+            Z[i] = np.fromstring(temp[i], dtype=float, count=1, sep=' ')[0]
     else: 
         print('Trying transposing Z coordinates')
         alllines = [' '.join(row) for row in zip(*[line.split(separator) for line in alllines])]
@@ -2733,11 +2726,11 @@ def ReadRZPsiFromCSV(Rfilepath, Zfilepath, Psifilepath, separator):
         tempnR = len(alllines[0].split(separator))
         if ((tempnZ == nZ and tempnR == nR) or (tempnZ == nZ and tempnR == 1)):
             for i in np.arange(0, nZ):
-                Z[i] = np.fromstring(alllines[i], dtype=float, count=1, sep=' ')
+                Z[i] = np.fromstring(alllines[i], dtype=float, count=1, sep=' ')[0]
         elif (tempnZ == 1 and tempnR == nZ):
             temp = alllines[1].split(separator)
             for i in np.arange(0, nZ):
-                Z[i] = np.fromstring(temp[i], dtype=float, count=1, sep=' ')
+                Z[i] = np.fromstring(temp[i], dtype=float, count=1, sep=' ')[0]
         else: 
             # Shouldn't be happening
             raise ValueError('Inconsistent dimensions of Z coordinates')

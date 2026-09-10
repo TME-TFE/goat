@@ -1581,8 +1581,8 @@ def ReadTraduitOutB2us(filepath):
         i = i + 1
         for j in np.arange(0, nDiv, 1):
             values = alllines[i+j].split()
-            divFcP1 = np.fromstring(values[0], dtype=int, count=1, sep =' '); divFcP1 = divFcP1[0]
-            divFcP2 = np.fromstring(values[1], dtype=int, count=1, sep =' '); divFcP2 = divFcP2[0]
+            divFcP1 = np.fromstring(values[1], dtype=int, count=1, sep =' '); divFcP1 = divFcP1[0]
+            divFcP2 = np.fromstring(values[2], dtype=int, count=1, sep =' '); divFcP2 = divFcP2[0]
 
             grid.topodata.divFcP1[j] = divFcP1-1 # account for zero-based indexing 
             grid.topodata.divFcP2[j] = divFcP2 

@@ -1030,7 +1030,7 @@ module goatmod_types
             call ReadSingleLine(filespec, chardummy, reachedeof) ! header
             do i = 1, grid%data%ndiv  
                 ! Read 
-                read(filespec, *) grid%data%divFcP(i, 1), &
+                read(filespec, *) idum(0), grid%data%divFcP(i, 1), &
                     grid%data%divFcP(i, 2)
             end do
     
@@ -1392,7 +1392,7 @@ module goatmod_types
 
         ! Check the version to determine what to read in 
         readTopologicalData = .false. 
-        if (chardummy2(8:17) >= '03.002.002') then 
+        if (chardummy2(8:17) >= '03.002.002') then
             ! Topological data should be present
             readTopologicalData = .true.
         end if 
@@ -1587,7 +1587,7 @@ module goatmod_types
             call ReadSingleLine(filespec, chardummy2, reachedeof) ! header
             do i = 1, grid%data%ndiv  
                 ! Read 
-                read(filespec, *) grid%data%divFcP(i, 1), &
+                read(filespec, *) idum(0), grid%data%divFcP(i, 1), &
                     grid%data%divFcP(i, 2)
             end do
     
@@ -2226,11 +2226,11 @@ module goatmod_types
             end do
     
             ! Divertor target data
-            tempstring  = '*cf: divFcP1 divFcP2'
+            tempstring  = '*cf: div divFcP(:,1) divFcP(:,2)'
             write(fu, '(a)' ) tempstring 
             do i = 1, nDiv
-                fmt = '(2'//Ifm//')'
-                write (fu, fmt) divFcP(i, 1), divFcP(i, 2)
+                fmt = '(3'//Ifm//')'
+                write (fu, fmt) i, divFcP(i, 1), divFcP(i, 2)
             end do
     
             ! Divertor face list

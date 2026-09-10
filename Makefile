@@ -87,7 +87,7 @@ BUILDDIR :=./builds/$(BUILDDIR)
 goat: $(addprefix $(BUILDDIR)/, $(GOAT_TARGETS)) $(BUILDDIR)/goat.o
 	-mv -f *.o $(BUILDDIR);  
 	-mv -f *.mod $(BUILDDIR); 
-	$(FC) $(LFLAGS) -o $(BUILDDIR)/$(EXEC_NAME) $(BUILDDIR)/*.o $(LAPACKPATH) $(BLASPATH) $(UMFPACKPATH) $(DMUMPS_LPATH) -lcxsparse \
+	$(FC) $(LFLAGS) -o $(BUILDDIR)/$(EXEC_NAME) $(BUILDDIR)/*.o $(LAPACKPATH) $(BLASPATH) $(UMFPACKPATH) $(DMUMPS_LPATH) $(CXSparsePATH) -lcxsparse \
 	$(SUITESPARSEPATH) -I src/Clayer/Include $(DMUMPS_IPATH); 
 	rm $(BUILDDIR)/Goat.o; 
 	cp $(BUILDDIR)/$(EXEC_NAME) ./executables/.
@@ -97,7 +97,7 @@ goat_debug: goat
 tests: $(addprefix $(BUILDDIR)/,$(TEST_TARGETS) ) $(BUILDDIR)/tests.o 
 	-mv -f *.o $(BUILDDIR);  
 	-mv -f *.mod $(BUILDDIR); 
-	$(FC) $(LFLAGS) -o $(BUILDDIR)/tests.exe $(BUILDDIR)/*.o $(LAPACKPATH) $(BLASPATH) $(UMFPACKPATH) $(DMUMPS_LPATH) -lcxsparse \
+	$(FC) $(LFLAGS) -o $(BUILDDIR)/tests.exe $(BUILDDIR)/*.o $(LAPACKPATH) $(BLASPATH) $(UMFPACKPATH) $(DMUMPS_LPATH) $(CXSparsePATH) -lcxsparse \
 	$(SUITESPARSEPATH) -I src/Clayer/Include
 	rm $(BUILDDIR)/tests.o; 
 	cp $(BUILDDIR)/tests.exe ./executables/.
@@ -105,7 +105,7 @@ tests: $(addprefix $(BUILDDIR)/,$(TEST_TARGETS) ) $(BUILDDIR)/tests.o
 testc: $(addprefix $(BUILDDIR)/,$(CTEST_TARGETS) ) $(BUILDDIR)/testc.o 
 	-mv -f *.o $(BUILDDIR);  
 	-mv -f *.mod $(BUILDDIR); 
-	$(CC) $(LFLAGS) -o $(BUILDDIR)/testc.exe $(BUILDDIR)/*.o -lcxsparse $(SUITESPARSEPATH) -I src/Clayer/Include
+	$(CC) -o $(BUILDDIR)/testc.exe $(BUILDDIR)/*.o $(CXSparsePATH) -lcxsparse $(SUITESPARSEPATH) -I src/Clayer/Include
 	rm $(BUILDDIR)/Testc.o; 
 	cp $(BUILDDIR)/testc.exe ./executables/.
 
@@ -115,9 +115,9 @@ shapeopt: $(addprefix $(BUILDDIR)/, $(SHAPEOPT_TARGETS) ) $(BUILDDIR)/shapeopt.o
 ifdef DOSOLPS
 	$(FC) $(LFLAGS) -o $(BUILDDIR)/$(EXEC_NAME) $(BUILDDIR)/*.o $(B25LIBPATH)/adStack.o \
 	 $(B25LIBPATH)/b2mod_cdf.o $(B25LIBPATH)/smax.o $(B25LIBPATH)/smin.o $(LAPACKPATH) $(BLASPATH) $(UMFPACKPATH) $(DMUMPS_LPATH) \
-	 -lcxsparse $(SUITESPARSEPATH) -I src/Clayer/Include  -I$(B25LIBPATH) -L$(B25LIBPATH) -l:libb2.a -L$(B25LIBPATH) -l:libb2.a -lnetcdf $(LD_NETCDF)
+	 $(CXSparsePATH) -lcxsparse $(SUITESPARSEPATH) -I src/Clayer/Include  -I$(B25LIBPATH) -L$(B25LIBPATH) -l:libb2.a -L$(B25LIBPATH) -l:libb2.a -lnetcdf $(LD_NETCDF)
 else
-	$(FC) $(LFLAGS) -o $(BUILDDIR)/$(EXEC_NAME) $(BUILDDIR)/*.o $(LAPACKPATH) $(BLASPATH) $(UMFPACKPATH) $(DMUMPS_LPATH) -lcxsparse \
+	$(FC) $(LFLAGS) -o $(BUILDDIR)/$(EXEC_NAME) $(BUILDDIR)/*.o $(LAPACKPATH) $(BLASPATH) $(UMFPACKPATH) $(DMUMPS_LPATH) $(CXSparsePATH) -lcxsparse \
 	$(SUITESPARSEPATH) -I src/Clayer/Include
 endif
 	rm $(BUILDDIR)/ShapeOptimization.o; 
@@ -130,7 +130,7 @@ shapeopt_debug: shapeopt
 #	-mv -f *.mod $(BUILDDIR); 
 #	$(FC) $(LFLAGS) -o $(BUILDDIR)/shapeopt_solps $(BUILDDIR)/*.o $(B25LIBBPATH)/adStack.o \
 	 $(B25LIBBPATH)/b2mod_cdf.o $(LAPACKPATH) $(BLASPATH) $(UMFPACKPATH) \
-	 -lcxsparse $(SUITESPARSEPATH) -I src/Clayer/Include  -I$(B25LIBPATH) -L$(B25LIBPATH) -l:libb2.a -L$(B25LIBPATH) -l:libb2.a -lnetcdf $(LD_NETCDF)
+	 $(CXSparsePATH) -lcxsparse $(SUITESPARSEPATH) -I src/Clayer/Include  -I$(B25LIBPATH) -L$(B25LIBPATH) -l:libb2.a -L$(B25LIBPATH) -l:libb2.a -lnetcdf $(LD_NETCDF)
 #	rm $(BUILDDIR)/ShapeOptimization.o; 
 #	cp $(BUILDDIR)/shapeopt_solps.exe ./executables/.
 
@@ -147,7 +147,7 @@ $(BUILDDIR)/tests.o: Runfiles/Tests.F90
 
 ## Testc.o 			: C layer tests
 $(BUILDDIR)/testc.o: Runfiles/Testc.c 
-	$(CC) $(CCFLAGS) Runfiles/Testc.c -lcxsparse $(SUITESPARSEPATH) -I src/Clayer/Include -I$(BUILDDIR) $(DMUMPS_IPATH)
+	$(CC) $(CCFLAGS) Runfiles/Testc.c $(SUITESPARSEPATH) -I src/Clayer/Include -I$(BUILDDIR) $(DMUMPS_IPATH)
 
 ## shapeopt.o		: shape optimization 
 $(BUILDDIR)/shapeopt.o : Runfiles/ShapeOptimization.F90 

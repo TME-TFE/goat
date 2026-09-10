@@ -2889,6 +2889,11 @@ module ggmod_gridgeneration2D
                 isvertexdeleted(celldata(i)%tubes(j)%hfline%vert) = .false.
                 isvertexdeleted(celldata(i)%tubes(j)%lfline%vert) = .false.
             end do
+
+            ! Also update line data
+            do j = 1, size(celldata(i)%lines)
+                call celldata(i)%lines(j)%UpdateLineData(ggtmdata)
+            end do 
         end do 
 
         ! Update ggtm data
@@ -5346,18 +5351,19 @@ module ggmod_gridgeneration2D
         ! Auxiliary
         integer(I8)                             :: &
             tf, cind, nc, ntf, incr, nv, temp, &
-            startind, endind, nfs, tfloc, tfc, nthf, ntlf
+            startind, endind, nfs, tfloc, tfc, nthf, ntlf, edgeID
         integer(I8), allocatable, dimension(:)  :: tubec, tubef, &
             allIDs, s1, s2, polv, fsID, sortind, thf, tlf, tvertexID, &
             tf1, tf2, allnbtf, contourind, tv1, tv2
         integer(I8), allocatable, dimension(:, :)   :: nint, segrf, &
             segc, vertexID, temp2
         real(R8)                                :: &
-            nxc, nyc, nxfv, nyfv, txf, tyf, ntxf, tmaxval
+            nxc, nyc, txf, tyf, ntxf, tmaxval
         real(R8), allocatable, dimension(:)     :: &
             tx, ty, xl, yl, tfval, sr1, sr2, txint, tyint, &
             nxf, nyf, nnf, tsegrc, tsegrrf, dlcv, newdlcv, newtfval, &
-            tubehfval, tubelfval, tempfval
+            tubehfval, tubelfval, tempfval, nxfv, nyfv, tempedgeID, &
+            alledgeID
         real(R8), allocatable, dimension(:, :)  :: segrrf, segrc, &
             xint, yint
         logical                                 :: isflremoved_nointersect, &
@@ -5555,7 +5561,7 @@ module ggmod_gridgeneration2D
             ! Concatenate & orient contours
             !------------------------------
             ! Precompute face normals for each flux surface for 
-            ! determining orientation
+            ! determining orientation.
             nxf = -(facedata(tf)%line%yl(2:) - facedata(tf)%line%yl(1:size(facedata(tf)%line%yl)-1))
             nyf = (facedata(tf)%line%xl(2:) - facedata(tf)%line%xl(1:size(facedata(tf)%line%xl)-1))
             nxf = [nxf, nxf(size(nxf))]
@@ -5754,28 +5760,56 @@ module ggmod_gridgeneration2D
                     'not supported')
             end if 
 
-            ! Recompute face normals, now with (coarser) vertex values
-            nxf = -(facedata(tf)%line%yv(2:) - facedata(tf)%line%yv(1:size(facedata(tf)%line%yv)-1))
-            nyf = (facedata(tf)%line%xv(2:) - facedata(tf)%line%xv(1:size(facedata(tf)%line%xv)-1))
-            if (facedata(tf)%line%dlcv(1) < facedata(tf)%line%dlcv(facedata(tf)%line%nv)) then 
-                ! Vertices are ordered along line, all good
-            else
-                ! Vertices are ordered in opposite direction, need to change changesign
-                changesign = .not. changesign
-            end if 
-            nnf = sqrt(nxf**2 + nyf**2)
-            nxf = nxf/nnf
-            nyf = nyf/nnf
-            !nxf = nxf2 
-            !nyf = nyf2
-            !if (doflip) then 
-            !    nxf = nxf(size(nxf):1:-1)
-            !    nyf = nyf(size(nyf):1:-1)
+            ! Recompute face normals on vertices
+            ! Note: need to compute the actual face normal there, not the
+            ! one determined by grid vertices! That may lead to wrong results due to
+            ! coarser resolution...
+
+            ! Compute on which edge the vertices lie
+            alledgeID = real([(k, k=1, size(facedata(tf)%line%xl))], kind=R8)
+            call Interpolate1D(facedata(tf)%line%dlcv, tempedgeID, facedata(tf)%line%dllc, alledgeID)
+            
+            ! Compute normals in vertices
+            allocate(nxfv(size(tempc)), nyfv(size(tempc)))
+            do j = 1, size(tempc)
+                ! Assume vertex on edge, not in polygon node (additional checks needed)
+                edgeID = floor(tempedgeID(tempc(j)%ID+1)) ! +1, because second vertex of line corresponds to first contour
+                if (edgeID > size(nxf)) edgeID = size(nxf) ! hedge for point on final vertex
+
+                ! Check if it is exactly equal to a node
+                if (IsRealEqualToInt(tempedgeID(tempc(j)%ID+1), edgeID, tolfacopt=10.0_R8)) then 
+                    ! Print warning
+                    print *, 'TraceTopologicalMeshTubeContours: point of ' // & 
+                            'contour lies exactly on a polygon vertex, ' // & 
+                            'polygon normal checks to orient the contour ' // &
+                            'may fail'
+                end if
+                ! Take edge normal
+                nxfv(tempc(j)%ID) = nxf(edgeID)
+                nyfv(tempc(j)%ID) = nyf(edgeID)
+            end do
+
+            !nxf = -(facedata(tf)%line%yv(2:) - facedata(tf)%line%yv(1:size(facedata(tf)%line%yv)-1))
+            !nyf = (facedata(tf)%line%xv(2:) - facedata(tf)%line%xv(1:size(facedata(tf)%line%xv)-1))
+            !if (facedata(tf)%line%dlcv(1) < facedata(tf)%line%dlcv(facedata(tf)%line%nv)) then 
+            !    ! Vertices are ordered along line, all good
+            !else
+            !    ! Vertices are ordered in opposite direction, need to change changesign
+            !    changesign = .not. changesign
             !end if 
-            if (changesign) then 
-                nxf = -nxf
-                nyf = -nyf
-            end if 
+            !nnf = sqrt(nxf**2 + nyf**2)
+            !nxf = nxf/nnf
+            !nyf = nyf/nnf
+            !!nxf = nxf2 
+            !!nyf = nyf2
+            !!if (doflip) then 
+            !!    nxf = nxf(size(nxf):1:-1)
+            !!    nyf = nyf(size(nyf):1:-1)
+            !!end if 
+            !if (changesign) then 
+            !    nxf = -nxf
+            !    nyf = -nyf
+            !end if 
             
             ! Check if contours make sense and reformat if necessary
             allIDs = tempc%ID
@@ -5816,9 +5850,9 @@ module ggmod_gridgeneration2D
                     associate(tID       => tempc(j)%ID)
                     nxc = tempc(j)%x(2) - tempc(j)%x(1)
                     nyc = tempc(j)%y(2) - tempc(j)%y(1)
-                    nxfv = 0.5*(nxf(tID) + nxf(tID+1)) ! need to work with ID here, since contours may be open etc
-                    nyfv = 0.5*(nyf(tID) + nyf(tID+1))
-                    if ((nxc*nxfv + nyc*nyfv) < 0) then 
+                    !nxfv = 0.5*(nxf(tID) + nxf(tID+1)) ! need to work with ID here, since contours may be open etc
+                    !nyfv = 0.5*(nyf(tID) + nyf(tID+1))
+                    if ((nxc*nxfv(tID) + nyc*nyfv(tID)) < 0) then 
                         ! Flip the contour
                         tempc(j)%x = tempc(j)%x(size(tempc(j)%x):1:-1)
                         tempc(j)%y = tempc(j)%y(size(tempc(j)%y):1:-1)
@@ -5852,9 +5886,9 @@ module ggmod_gridgeneration2D
                             associate(tID   => tempc(j)%ID)
                             nxc = c1%x(2) - c1%x(1)
                             nyc = c1%y(2) -  c1%y(1)
-                            nxfv = 0.5*(nxf(tID) + nxf(tID+1)) ! need to work with ID here, since contours may be open etc
-                            nyfv = 0.5*(nyf(tID) + nyf(tID+1))
-                            if ((nxc*nxfv + nyc*nyfv) < 0) then 
+                            !nxfv = 0.5*(nxf(tID) + nxf(tID+1)) ! need to work with ID here, since contours may be open etc
+                            !nyfv = 0.5*(nyf(tID) + nyf(tID+1))
+                            if ((nxc*nxfv(tID) + nyc*nyfv(tID)) < 0) then 
                                 ! Flip the contour
                                c1%x =c1%x(size(tempc(j)%x):1:-1)
                                c1%y =c1%y(size(tempc(j)%y):1:-1)
@@ -5936,7 +5970,7 @@ module ggmod_gridgeneration2D
             tempc = pack(tempc, keepind)
 
             ! Housekeeping
-            deallocate(keepind, iscontourfound)
+            deallocate(keepind, iscontourfound, nxfv, nyfv)
 
             ! Check contour-tube intersections
             !---------------------------------

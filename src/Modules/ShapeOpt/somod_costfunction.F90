@@ -438,7 +438,7 @@ module somod_costfunction
         ! Auxiliary 
         integer(I8)                         :: filespec 
         type(VesselOptionsUDT)              :: vesseloptions
-        type(VesselUDT)                     :: newvessel
+        type(VesselUDT)                     :: newvessel, triangulationvessel
 
         ! Data
         
@@ -465,7 +465,7 @@ module somod_costfunction
         ! Set up the vessel polygon
         !==========================
         ! Read in the vessel
-        call ReadVessel(filespec, newvessel, vesseloptions)
+        call ReadVessel(filespec, newvessel, triangulationvessel, vesseloptions)
 
         ! Extract data
         call ExtractVesselData(newvessel, vesseloptions)

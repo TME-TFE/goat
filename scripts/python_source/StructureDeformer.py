@@ -208,4 +208,3 @@ def LineIntersections(x11, y11, x12, y12, x21, y21, x22, y22):
     return x, y
             
         
-

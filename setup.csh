@@ -56,32 +56,40 @@ setenv PATH "${GOAT_SCRIPTPATHS}:${GOAT_EXECUTABLES}:${PATH}"
 #------------------------------------------------------------------------
 setenv COMPILER gfortran # only gfortran compiler supported (for now)
 
-if ( $?GOAT_HOST_NAME_FORCE ) then
-  setenv HOST_NAME $GOAT_HOST_NAME_FORCE
-  echo "Running at $HOST_NAME (set by GOAT_HOST_NAME_FORCE)"
-else if (-s ${GOATTOP}/SETUP/setup.csh.HOST_NAME.local) then
-  echo Loading SETUP/setup.csh.HOST_NAME.local.
-  source ${GOATTOP}/SETUP/setup.csh.HOST_NAME.local
-else
-  if (-s ${GOATTOP}/whereami) then
-    set iamat=`${GOATTOP}/whereami|tail -1`
-    echo Running at $iamat.
+if (`uname` != "Darwin") then   # Assuming to work on some HPC cluster or on a local Linux device
+  if ( $?GOAT_HOST_NAME_FORCE ) then
+    setenv HOST_NAME $GOAT_HOST_NAME_FORCE
+    echo "Running at $HOST_NAME (set by GOAT_HOST_NAME_FORCE)"
+  else if (-s ${GOATTOP}/SETUP/setup.csh.HOST_NAME.local) then
+    echo Loading SETUP/setup.csh.HOST_NAME.local.
+    source ${GOATTOP}/SETUP/setup.csh.HOST_NAME.local
   else
-    set iamat="LOCAL"
+    if (-s ${GOATTOP}/whereami) then
+      set iamat=`${GOATTOP}/whereami|tail -1`
+      echo Running at $iamat.
+    else
+      set iamat="UNKNOWN"
+    endif
+    switch ($iamat)
+    case "*UNKNOWN":
+      setenv HOST_NAME LINUX
+      breaksw
+    case "*LOCAL":
+      setenv HOST_NAME LINUX
+      breaksw
+    default:
+      setenv HOST_NAME ${iamat}
+    endsw
   endif
-  switch ($iamat)
-  case "*LOCAL":
-    setenv HOST_NAME UNKNOWN
-    breaksw
-  default:
-    setenv HOST_NAME ${iamat}
-  endsw
+else   # Using MacOS, so assuming to work on a local device
+  setenv SYSNAME `uname`_`arch`
+  setenv ARCH `arch`
+  echo Running on MacOS, architecture ${ARCH}.
+  setenv HOST_NAME 'DARWIN'
 endif
 
 # Load 
 set setup=${GOATTOP}/SETUP/setup.csh.${HOST_NAME}.${COMPILER}
-set setup_pre = `mktemp` alias_pre = `mktemp` && alias >! $alias_pre
-env|sed -ne "/^[ }]\|=(/b; s/\([^=]*\)=\(.*\)/setenv \1 '\2'/p" >! $setup_pre
 
 # Load default openmp settings
 source ${GOATTOP}/SETUP/openmp

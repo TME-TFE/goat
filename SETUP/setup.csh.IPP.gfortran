@@ -1,0 +1,61 @@
+setenv SYSNAME `uname`_`arch`
+alias gmake make
+if ( ! $?MISSING_DEPENDENCY ) set MISSING_DEPENDENCY = 0
+
+# Initialize the path collections, if they do not exist already
+
+if ( ! $?LD_LIBRARY_PATH ) then
+    setenv LD_LIBRARY_PATH
+endif
+if ( ! $?PKG_CONFIG_PATH ) then
+    setenv PKG_CONFIG_PATH
+endif
+
+# Load modules
+
+setenv MODULEPATH /toks/scratch/dpc/easybuild/modules/all:$MODULEPATH
+module load SuiteSparse/7.7.0-foss-2023b
+module load gcc/14
+
+setenv OMP_NUM_THREADS 4
+
+# Add directories of compiled libraries, include directives, etc.
+
+setenv OPENBLAS_HOME ${EBROOTOPENBLAS}
+setenv SUITESPARSE_HOME ${EBROOTSUITESPARSE}
+
+setenv LD_LIBRARY_PATH "${LD_LIBRARY_PATH}:${OPENBLAS_HOME}/lib:${SUITESPARSE_HOME}/lib"
+
+setenv SUITESPARSE_INCLUDE_DIR `find ${SUITESPARSE_HOME}/include -name cs.h -exec dirname {} \; | head -1`
+
+setenv LAPACKPATH "-L${OPENBLAS_HOME}/lib -lopenblas"
+setenv BLASPATH "-L${OPENBLAS_HOME}/lib -lopenblas"
+setenv UMFPACKPATH "-L${SUITESPARSE_HOME}/lib -lumfpack"
+setenv CXSparsePATH "-L${SUITESPARSE_HOME}/lib"
+setenv SUITESPARSEPATH "-I${SUITESPARSE_INCLUDE_DIR}"
+
+# Define compilers
+
+setenv CC gcc
+setenv FC gfortran
+setenv MPI_FC mpif90
+setenv CXX g++
+
+# Check if external libraries are installed
+
+if ( ! -e "${SUITESPARSE_INCLUDE_DIR}/cs.h" ) then
+    set MISSING_DEPENDENCY = 1
+endif
+if ( `ls ${SUITESPARSE_HOME}/lib/libcxsparse.* >& /dev/null; echo $status` != 0 ) then
+    set MISSING_DEPENDENCY = 1
+endif
+if ( `ls ${SUITESPARSE_HOME}/lib/libumfpack.* >& /dev/null; echo $status` != 0 ) then
+    set MISSING_DEPENDENCY = 1
+endif
+if ( `ls ${OPENBLAS_HOME}/lib/libopenblas.* >& /dev/null; echo $status` != 0 ) then
+    set MISSING_DEPENDENCY = 1
+endif
+
+if ( $?MISSING_DEPENDENCY && "$MISSING_DEPENDENCY" == "1" ) then
+    echo "Warning: some dependencies are not installed. Install them using your preferred method."
+endif

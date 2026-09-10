@@ -485,7 +485,7 @@ VERSION 1.00.00
 # adaptations
 'gg.adap.extendtptubes'                 '1'
 'gg.adap.extendvesseltubes'             '1'
-'gg.adap.evtmaxvessellength'            '0.1'
+'gg.adap.evt.maxvessellength'            '0.1'
 
 # Refinement options
 'gg.ref.meth'                           'lengthbased' # 'tis but 'a test'of'this

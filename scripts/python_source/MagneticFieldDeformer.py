@@ -21,17 +21,17 @@ def Crop(R, Z, Psi, Rbox, Zbox):
     newPsi = copy.deepcopy(Psi)
 
     # Determine box
-    Rmin = np.minval(Rbox)
-    Rmax = np.maxval(Rbox)
-    Zmin = np.minval(Zbox)
-    Zmax = np.maxval(Zbox)
+    Rmin = np.min(Rbox)
+    Rmax = np.max(Rbox)
+    Zmin = np.min(Zbox)
+    Zmax = np.max(Zbox)
 
     # Determine cropping bounds
-    keepR = np.array(R >= Rmin and R <= Rmax)
-    keepZ = np.array(Z >= Zmin and Z <= Zmax)
-    newR = R(keepR)
-    newZ = Z(keepZ)
-    newPsi = Psi(keepR, keepZ)
+    keepR = (R >= Rmin) & (R <= Rmax)
+    keepZ = (Z >= Zmin) & (Z <= Zmax)
+    newR = R[keepR]
+    newZ = Z[keepZ]
+    newPsi = Psi[np.ix_(keepR, keepZ)]
 
     # Return 
     return newR, newZ, newPsi
@@ -208,5 +208,4 @@ def Perturb(R, Z, Psi, delta, diffmeth):
     # Return 
     return newR, newZ, newPsi 
             
-
 

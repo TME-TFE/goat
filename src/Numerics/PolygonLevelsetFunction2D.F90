@@ -1041,10 +1041,15 @@ module PolygonLevelsetFunction2D
         ! Initialize
         !===========
         ! Check polygonset 
-        call ps%OrientNestedClosedPolygons(flag)
-        if (flag > 1) then 
-            ! Polygon set does not comply, throw error
-            call gdErrorHandler('InitializePLF2DClosedExact: polygon set should be closed and non-intersecting')
+        if (ps%np > 0) then ! allow for empty polygon sets - will evaluate to zero
+            call ps%OrientNestedClosedPolygons(flag)
+            if (flag > 1) then 
+                ! Polygon set does not comply, throw error
+                call gdErrorHandler('InitializePLF2DClosedExact: polygon set should be closed and non-intersecting')
+            end if 
+        else
+            plf%ps = ps 
+            return 
         end if 
         
         ! Add polygonset structure
@@ -1270,6 +1275,12 @@ module PolygonLevelsetFunction2D
         end if
         if (present(dplfdvarin)) then 
             dplfdvar = dplfdvarin 
+        end if 
+
+        if (plf%ps%np == 0) then 
+            ! Empty polygonset - return zero values
+            val = 0 
+            return 
         end if 
 
         ! Initialize
@@ -1829,6 +1840,15 @@ module PolygonLevelsetFunction2D
 
         ! Initialize
         !===========
+        ! Check for trivial case
+        if (plf%ps%np == 0) then 
+            ! Empty polygonset - return zero values
+            vq = 0 
+            if (present(edgeIDopt)) edgeIDopt = 0
+            if (present(vertIDopt)) vertIDopt = 0
+            return 
+        end if 
+
         ! Associate
         associate(&
             vl      => plf%vertlabel,   &
@@ -1986,6 +2006,12 @@ module PolygonLevelsetFunction2D
 
     ! Construct a 2D grid
     !====================
+    ! Check
+    if (plf%ps%np == 0) then 
+        print *,'Empty polygon levelset, cannot evaluate. Returning...'
+        return 
+    end if 
+    
     ! Set mesh size
     if (present(nxin)) then 
         nx = nxin 

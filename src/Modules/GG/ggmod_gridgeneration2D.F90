@@ -18956,13 +18956,14 @@ module ggmod_gridgeneration2D
 
         ! Auxiliary
         integer(I8)                                 :: tedgeID, &
-            temploc, tempfID, pointstart, pointend, flag
+            temploc, tempfID, pointstart, pointend, flag, tv1, &
+            tv2
         integer(I8), allocatable, dimension(:)      :: edgeID, vertID, &
             splitvertID, uedgeID, sortind, allvert, &
             voidedgevID1, voidedgevID2, vesseledgeID1, vesseledgeID2, &
-            tempf, bndfaces
+            tempf, bndfaces, labelsv1, labelsv2, labelse
         integer(I8), allocatable, dimension(:, :)   :: labels, &
-            voidedgevID
+            voidedgevID, voidlabels, templabels
         logical, allocatable, dimension(:)          :: isalbndface, &
             isvesselface, isalignedvert, isvesselvert, &
             istp, isvoidedge, issplitvesseledge, allistp, &
@@ -18983,6 +18984,7 @@ module ggmod_gridgeneration2D
             celldata    => ggtmdata%cell,   &
             facedata    => ggtmdata%face,   &
             plfv    => vessel%exactplfvessel_noref,   & ! make sure we use the original polygon edges!
+            plfel   => vessel%plfelements,      &
             vert    => simgrid%vert,            &
             face    => simgrid%face             &         
             )
@@ -19481,7 +19483,70 @@ module ggmod_gridgeneration2D
         allocate(voidedgevID(size(voidedgevID1), 2))
         voidedgevID(:, 1) = voidedgevID1
         voidedgevID(:, 2) = voidedgevID2 
-        call voidps%Construct(voidedgevID, [vert%x, plfv%xp], [vert%y, plfv%yp])
+
+        ! Determine the additional labels for each void polygon vertex:
+        ! - label(:, 1)     : 1 if it is a grid 'corner' vertex, otherwise 0
+        ! - label(:, 2,3)   : element IDs if they were present in the 
+        !       original polygon labels (label(:, 5,6) there), otherwise
+        !       zero. These element IDs may map back to some original
+        !       geometry description (e.g. in DivGeo)
+        ! - label(:, 4)     : the vertex ID as present in the original
+        !       geometry description (will not necessarily go from 1
+        !       to number of vertices!), zero if it is a grid vertex
+        ! These labels will be added in the void polygon on positions 
+        ! 2, 3, 4, 5 eventually (1 holds the original vertex ID if it is 
+        ! a grid vertex, non-grid vertices temporarily hold their ID)
+
+        allocate(voidlabels(vert%ntot+size(plfv%xp), 4))
+        voidlabels = 0
+        call plfel%EvaluateLabel([vert%x, plfv%xp], [vert%y, plfv%yp], &
+            templabels, edgeIDopt=edgeID, vertIDopt=vertID) ! in element plf, only three labels present, no vertex ID - to be added later
+        do i = 2, 3
+            voidlabels(:, i) = templabels(:, i)
+        end do 
+
+        ! Adjust when vertices lie on an edge
+        do i = 1, vert%ntot 
+            if (edgeID(i) /= 0) then 
+                ! Check labels 2 and 3 of the vertices of the edge - these
+                ! should give the element ID
+                tv1 = plfel%vp1(edgeID(i))
+                tv2 = plfel%vp2(edgeID(i))
+                labelsv1 = plfel%vertlabel(tv1, 2:3)
+                labelsv2 = plfel%vertlabel(tv2, 2:3)
+
+                ! Get common, non-zero labels
+                labelse = GetCommonElements(labelsv1, labelsv2)
+                labelse = pack(labelse, labelse /= 0)
+
+                ! Check
+                if ((size(labelse) == 0) .or. (size(labelse) >= 2)) then 
+                    ! Weird
+                    call gdErrorHandler('ComputeVoidRegionPolygonSet: ' // & 
+                        'could not determine void label of grid vertex')
+                else
+                    ! Vertex lies on this edge only
+                    voidlabels(i, 2) = labelse(1)
+                    voidlabels(i, 3) = 0
+                    voidlabels(i, 4) = 0
+                end if
+            elseif (vertID(i) /= 0) then 
+                ! Voidlabels already correctly set, normally speaking
+                voidlabels(i, 4) = 0 ! Still zero, because grid vertex
+            end if
+        end do
+
+        ! Set labels of non-grid vertices
+        do i = vert%ntot+1, size(templabels, 1)
+            voidlabels(i, 4) = vertID(i)
+        end do 
+
+        ! Set 'corner' vertices
+        voidlabels(splitvertID, 1) = 1
+
+        ! Construct the void polygon set
+        call voidps%Construct(voidedgevID, [vert%x, plfv%xp], [vert%y, plfv%yp], &
+            voidlabels)
 
         ! Orient (only if polygon present)
         if (voidps%np > 0) then 
@@ -19494,7 +19559,8 @@ module ggmod_gridgeneration2D
             print *, 'ComputeVoidRegionPolygonSet: no void polygons detected'
         end if
 
-        ! Flip
+        ! Flip - need CCW orientation for SOLPS, but the orientation 
+        ! routine provides CW orientation
         do i = 1, voidps%np 
             call voidps%polygons(i)%flip()
         end do 
@@ -19521,7 +19587,7 @@ module ggmod_gridgeneration2D
         ! 0.0
         ! 
         ! [# polygon vertices]
-        ! [x, y, isvesselvertex]
+        ! [x, y, dosplit]
         ! 
         ! Note: coordinate units are in cm!
 
@@ -19537,7 +19603,7 @@ module ggmod_gridgeneration2D
         character(*), intent(in)                :: filename 
 
         ! Auxiliary
-        integer(I8)                             :: isvesselvertex, fu
+        integer(I8)                             :: dosplit, fu
         character(:), allocatable               :: fmt
 
         ! Loop
@@ -19583,16 +19649,18 @@ module ggmod_gridgeneration2D
             ! Points (in cm!)
             fmt = '('//Rfm//','//spacefm//','//Rfm//','//spacefm//','//Ifm//')'
             do j = 1, size(pol(i)%vert)
-                ! Check if vertex is vessel vertex
-                if (pol(i)%labels(pol(i)%vert(j), 1) > grid%vert%ntot) then 
-                    isvesselvertex = 1
+                ! Check if vertex is vessel vertex or 'corner' vertex - 
+                ! can be marked to be split
+                if ((pol(i)%labels(pol(i)%vert(j), 1) > grid%vert%ntot) .or. &
+                    (pol(i)%labels(pol(i)%vert(j), 2) == 1 )) then 
+                    dosplit = 1
                 else
-                    isvesselvertex = 0
+                    dosplit = 0
                 end if 
 
                 ! Write
                 write(fu, fmt) pol(i)%x(pol(i)%vert(j))*100.0_R8, &
-                    pol(i)%y(pol(i)%vert(j))*100.0_R8, isvesselvertex
+                    pol(i)%y(pol(i)%vert(j))*100.0_R8, dosplit
             end do 
         end do 
 
@@ -19613,12 +19681,19 @@ module ggmod_gridgeneration2D
         ! should indicate whether it is a grid vertex (value smaller or
         ! equal to number of grid vertices) or a vessel vertex (value
         ! larger than number of grid vertices). The file format is 
-        ! the same as the fort.78 file format used in SOLPS (because 
-        ! this is also the only application of this routine):
+        ! similar to the fort.78 file format used in SOLPS (because 
+        ! this is also the only application of this routine), but
+        ! has some important differences:
         ! 0.0
         ! 
         ! [# polygon vertices]
-        ! [x, y, isvesselvertex, gridvertexID]
+        ! [x, y, dosplit, gridvertexID, elID1, elID2, vertexID]
+        ! 
+        ! Note that we also write out the grid vertex ID (if it is a
+        ! grid vertex, otherwise it is zero), the element(s) that the
+        ! vertex belongs to if it is not a grid vertex, and the vertex
+        ! ID of that vertex in the original geometry description (zero
+        ! if it is a grid vertex)
         ! 
         ! Note: coordinate units are in cm! If the vertex is not a grid
         ! vertex, the ID will be zero. 
@@ -19635,8 +19710,8 @@ module ggmod_gridgeneration2D
         character(*), intent(in)                :: filename 
 
         ! Auxiliary
-        integer(I8)                             :: isvesselvertex, fu, &
-            gridvertexID
+        integer(I8)                             :: dosplit, fu, &
+            gridvertexID, elID1, elID2, vertID
         character(:), allocatable               :: fmt
 
         ! Loop
@@ -19680,20 +19755,34 @@ module ggmod_gridgeneration2D
             write(fu, fmt) size(pol(i)%vert)
 
             ! Points (in cm!)
-            fmt = '('//Rfm//','//spacefm//','//Rfm//','//spacefm//','//Ifm//','//spacefm//','//Ifm//')'
+            fmt = '('//Rfm//','//spacefm//','//Rfm//','//spacefm//','&
+                //Ifm//','//spacefm//','//Ifm//','//spacefm//',' &
+                //Ifm//','//spacefm//','//Ifm//','//spacefm//',' &
+                //Ifm//')'
             do j = 1, size(pol(i)%vert)
                 ! Check if vertex is vessel vertex
                 if (pol(i)%labels(pol(i)%vert(j), 1) > grid%vert%ntot) then 
-                    isvesselvertex  = 1
+                    dosplit  = 1
                     gridvertexID    = 0
+                    
                 else
-                    isvesselvertex  = 0
+                    if (pol(i)%labels(pol(i)%vert(j), 2) > 0) then 
+                        ! Corner vertex
+                        dosplit = 1
+                    else
+                        ! Regular grid vertex
+                        dosplit  = 0
+                    end if 
                     gridvertexID    = pol(i)%labels(pol(i)%vert(j), 1)
                 end if 
+                elID1 = pol(i)%labels(pol(i)%vert(j), 3)
+                elID2 = pol(i)%labels(pol(i)%vert(j), 4)
+                vertID = pol(i)%labels(pol(i)%vert(j), 5)
 
                 ! Write
                 write(fu, fmt) pol(i)%x(pol(i)%vert(j))*100.0_R8, &
-                    pol(i)%y(pol(i)%vert(j))*100.0_R8, isvesselvertex, gridvertexID
+                    pol(i)%y(pol(i)%vert(j))*100.0_R8, dosplit, gridvertexID, &
+                        elID1, elID2, vertID
             end do 
         end do 
 
@@ -19720,7 +19809,7 @@ module ggmod_gridgeneration2D
         ! 0.0
         ! 
         ! [# polygon vertices]
-        ! [x, y, isvesselvertex, gridvertexID]
+        ! [x, y, iscornervertex, gridvertexID, elID1, elID2, vertID]
         ! 
         ! Note: coordinate units are in cm! If the vertex is not a grid
         ! vertex, the ID will be zero. 
@@ -19739,7 +19828,8 @@ module ggmod_gridgeneration2D
         character(:), allocatable               :: thisline
         integer(I8)                             :: fu, nv 
         integer                                 :: readstatus
-        integer(I8), allocatable, dimension(:)  :: tempvID, tempisvesselvertex
+        integer(I8), allocatable, dimension(:)  :: tempvID, tempdosplit, &
+            tempelID1, tempelID2, tempvertID
         integer(I8), allocatable, dimension(:, :)   :: templabels 
         logical                                 :: reachedeof 
         real(R8), allocatable, dimension(:)     :: tempx, tempy 
@@ -19779,24 +19869,35 @@ module ggmod_gridgeneration2D
             print *, nv 
 
             ! Initialize
-            allocate(tempx(nv), tempy(nv), tempisvesselvertex(nv), &
-                tempvID(nv), templabels(nv, 1))
+            allocate(tempx(nv), tempy(nv), tempdosplit(nv), &
+                tempvID(nv), tempelID1(nv), tempelID2(nv), &
+                tempvertID(nv), templabels(nv, 5))
 
             ! Read points
             do i = 1, nv
                 ! Read 
-                read(fu, *) tempx(i), tempy(i), tempisvesselvertex(i), tempvID(i)
+                read(fu, *) tempx(i), tempy(i), tempdosplit(i), &
+                    tempvID(i), tempelID1(i), tempelID2(i), &
+                    tempvertID(i) 
             end do 
 
-            ! Construct polygon (set labels as gridvertexID)
+            ! Reconstruct labels
+            templabels = 0
             templabels(:, 1) = tempvID 
+            where ((tempdosplit == 1) .and. (tempvID /= 0)) &
+                templabels(:, 2) = 1 ! only corner vertex if grid vertex and allowed to split
+            templabels(:, 3) = tempelID1
+            templabels(:, 4) = tempelID2
+            templabels(:, 5) = tempvertID
+
+            ! Construct polygon (set labels as gridvertexID)
             call temppol%Construct(tempx/100.0_R8, tempy/100.0_R8, templabels)
 
             ! Add
             pol = [pol, temppol]
 
             ! Housekeeping
-            deallocate(tempx, tempy, tempisvesselvertex, tempvID, templabels)
+            deallocate(tempx, tempy, tempdosplit, tempvID, templabels)
         end do 
 
         ! Construct void polygon set

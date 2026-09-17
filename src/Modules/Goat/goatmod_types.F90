@@ -538,11 +538,20 @@ module goatmod_types
         ! - Element face labels (fcLbl)
         ! - Vessel elements (elvessel)
 
+        ! Depending on what data is available, we also construct the 
+        ! following data: 
+        ! - elv1, elv2: vertex indices of elements
+        ! - vellist, vellistp1, vellistp2: list of elements that belong
+        !   to a vertex, where the elements of vertex i can be looked up
+        !   as vellist(vellistp1(i):vellistp1(i)+vellistp2(i)-1). Note
+        !   that, in principle, a vertex may belong to an arbitrary 
+        !   number of elements. 
+
         ! We indicate whether data is available using logicals
         
         integer(I8)                             :: nel, nv
         integer(I8), allocatable, dimension(:)  :: elID, elfcLbl, elv1, &
-            elv2, elvessel, trimark
+            elv2, elvessel, trimark, vellist, vellistp1, vellistp2
         real(R8), allocatable, dimension(:)     :: elvx, elvy
 
         logical     :: hasEl, hasElFcLbl, hasElVessel, hasElVoid
@@ -568,6 +577,8 @@ module goatmod_types
         ! Triangulation structure extraction
         procedure :: ExtractTriangulationStructures  => ExtractDGTriangulationStructures
 
+        ! Auxiliary
+        procedure :: GetVertexElements  => GetVertexElementsDGData
     end type
 
     !------------------------------------------------------------------!
@@ -590,7 +601,14 @@ module goatmod_types
         !               upon itself
         ! - id:         identifier (integer number)
         ! - label:      (optional) additional label. Zero by default, 
-        !               unless otherwise specified. 
+        !               unless otherwise specified.
+        ! - elID1,2     element IDs of the vertices, if data was 
+        !               read from divgeo. If not, these IDs are set
+        !               to zero. If a vertex only belongs to one 
+        !               element, the second one will be zero
+        ! - vertID      vertex IDs as numbered in the element list. 
+        !               Zero if no elements present
+
 
         ! Coordinates
         integer(I8)                         :: np
@@ -601,6 +619,10 @@ module goatmod_types
 
         ! ID
         integer(I4)                         :: ID, label
+
+        ! Element IDs
+        integer(I8), allocatable, dimension(:)  ::  elID1, elID2, &
+            vertID
 
     end type
 
@@ -672,6 +694,13 @@ module goatmod_types
         !                   (<...>_noref is the same, but with no refinement, so 
         !                   vertices are original structure polygon vertices except 
         !                   at intersections of structures)
+        ! - plfelements:    polygon levelset function of the initial
+        !                   vessel polygon, used to map vertices on 
+        !                   the polygon back to original element IDs
+        !                   and so on. Useful when data of a geometry
+        !                   with its own numbering is used, e.g. through
+        !                   DivGeo. Will be zero with regular structure.dat 
+        !                   reading
 
         ! Target plates
         integer(I4)                         :: ntp = 0
@@ -689,7 +718,7 @@ module goatmod_types
         class(PolygonLevelsetFunction2DUDT), allocatable   :: plfvessel, &
             plftarget
         type(PolygonLevelsetFunction2DClosedExactUDT)   :: exactplfvessel, &
-            exactplfvessel_noref
+            exactplfvessel_noref, plfelements
 
     contains 
 
@@ -1339,7 +1368,6 @@ module goatmod_types
         integer(I8)                 :: idum(0:9), idum2(1), filespec   
         integer(I8)                 :: nc,nf,nv ! total number of cells, faces, vertices
     
-        character(120)              :: chardummy   ! dummy array
         character(:), allocatable   :: chardummy2
         integer(I8), allocatable    :: cdummy(:,:), cdummy2(:) ! dummy array
         integer(I8), allocatable    :: fdummy(:,:), fdummy2(:, :) ! dummy array
@@ -5352,6 +5380,14 @@ module goatmod_types
                 ! First x, then y coordinate
                 read(filespecifier, *) vessel%structures(i)%x(j), vessel%structures(i)%y(j)
             end do
+
+            ! Allocate element IDs and set to zero
+            allocate(vessel%structures(i)%elID1(npoints), &
+                vessel%structures(i)%elID2(npoints))
+
+            ! No element value present in structure.dat file (normally)
+            vessel%structures(i)%elID1 = 0
+            vessel%structures(i)%elID2 = 0
         end do
 
         ! Close the file
@@ -5430,15 +5466,20 @@ module goatmod_types
         integer                         :: filespecifier
         type(VesselOptionsUDT)          :: vesseloptions 
         type(VesselUDT)                 :: vessel, triangulationvessel
-        type(DivGeoDataUDT)             :: dgdata
-    
+        
         ! Loop variables
+        integer(I8)                     :: j 
     
         ! Auxiliary variables 
         type(VesselStructureUDT), allocatable   :: structures(:), &
             triangulationstructures(:)
+        type(PolygonSetUDT)                     :: tempps1, tempps2
         integer(I8)                             :: flag
-    
+        integer(I8), allocatable, dimension(:)  :: elvesselIDs, &
+            eltriangIDs, tvel, tempel
+        integer(I8), allocatable, dimension(:, :)   :: elv, ellbl
+        type(DivGeoDataUDT)                     :: dgdata
+
         ! Main program
         !=============
         ! Check how to read the vessel structure
@@ -5448,6 +5489,11 @@ module goatmod_types
     
             ! Read in the separate vessel structures
             call read_structure(filespecifier, vessel, vesseloptions)
+
+            ! Set the polygon levelset function for element identification:
+            ! should simply evaluate to zero
+            tempps1%np = 0
+            call vessel%plfelements%Initialize(tempps1)
     
             ! No additional information on triangulation vessel, so will
             ! be the same as the original vessel 
@@ -5473,7 +5519,8 @@ module goatmod_types
             call dgdata%Read(vesseloptions%filepath)
 
             ! Read plasma vessel structures
-            call dgdata%ExtractVesselStructures(structures, flag)
+            call dgdata%ExtractVesselStructures(structures, elvesselIDs, &
+                flag)
 
             ! Check
             if (flag > 0) then 
@@ -5481,16 +5528,93 @@ module goatmod_types
                     'vessel structure data from DivGeo file')
             end if 
 
+            ! Construct the element representation - add vertex's element IDs as additional labels
+            allocate(ellbl(dgdata%nv, 2))
+            ellbl = 0
+            allocate(elv(size(elvesselIDs), 2))
+            elv(:, 1) = dgdata%elv1(elvesselIDs)
+            elv(:, 2) = dgdata%elv2(elvesselIDs)
+            do j = 1, size(elvesselIDs)
+                ! First vertex
+                tvel = dgdata%GetVertexElements(elv(j, 1))
+                tempel = GetCommonElements(tvel, elvesselIDs)
+                if (size(tempel) == 1) then 
+                    ellbl(elv(j, 1), 1) = tempel(1) 
+                    ellbl(elv(j, 1), 2) = 0
+                elseif (size(tempel) == 2) then 
+                    ellbl(elv(j, 1), 1) = tempel(1) 
+                    ellbl(elv(j, 1), 2) = tempel(2)
+                else 
+                    call gdErrorHandler('ExtractVesselData: could not find elements of a vertex, unexpected')
+                end if 
+
+                ! Second vertex
+                tvel = dgdata%GetVertexElements(elv(j, 2))
+                tempel = GetCommonElements(tvel, elvesselIDs)
+                if (size(tempel) == 1) then 
+                    ellbl(elv(j, 2), 1) = tempel(1) 
+                    ellbl(elv(j, 2), 2) = 0
+                elseif (size(tempel) == 2) then 
+                    ellbl(elv(j, 2), 1) = tempel(1) 
+                    ellbl(elv(j, 2), 2) = tempel(2)
+                else 
+                    call gdErrorHandler('ExtractVesselData: could not find elements of a vertex, unexpected')
+                end if 
+            end do 
+            call tempps1%Construct(elv, dgdata%elvx, dgdata%elvy, ellbl)
+            call vessel%plfelements%Initialize(tempps1)
+            deallocate(elv, ellbl)
+
             ! Initialize vessel
             vessel%nstructures = int(size(structures), kind=I4)
             vessel%structures = structures
 
             ! Read triangulation structures
-            call dgdata%ExtractTriangulationStructures(triangulationstructures, flag)
+            call dgdata%ExtractTriangulationStructures(triangulationstructures, &
+                eltriangIDs, flag)
+
+            ! Check
             if (flag > 0) then 
                 call gdErrorHandler('ReadVessel: could not read in ' // & 
                     'triangulation vessel structure data from DivGeo file')
             end if
+
+            ! Construct the element representation - add vertex's element IDs as additional labels
+            allocate(ellbl(dgdata%nv, 2))
+            ellbl = 0
+            allocate(elv(size(eltriangIDs), 2))
+            elv(:, 1) = dgdata%elv1(eltriangIDs)
+            elv(:, 2) = dgdata%elv2(eltriangIDs)
+            do j = 1, size(eltriangIDs)
+                ! First vertex
+                tvel = dgdata%GetVertexElements(elv(j, 1))
+                tempel = GetCommonElements(tvel, eltriangIDs)
+                if (size(tempel) == 1) then 
+                    ellbl(elv(j, 1), 1) = tempel(1) 
+                    ellbl(elv(j, 1), 2) = 0
+                elseif (size(tempel) == 2) then 
+                    ellbl(elv(j, 1), 1) = tempel(1) 
+                    ellbl(elv(j, 1), 2) = tempel(2)
+                else 
+                    call gdErrorHandler('ExtractVesselData: could not find elements of a vertex, unexpected')
+                end if 
+
+                ! Second vertex
+                tvel = dgdata%GetVertexElements(elv(j, 2))
+                tempel = GetCommonElements(tvel, eltriangIDs)
+                if (size(tempel) == 1) then 
+                    ellbl(elv(j, 2), 1) = tempel(1) 
+                    ellbl(elv(j, 2), 2) = 0
+                elseif (size(tempel) == 2) then 
+                    ellbl(elv(j, 2), 1) = tempel(1) 
+                    ellbl(elv(j, 2), 2) = tempel(2)
+                else 
+                    call gdErrorHandler('ExtractVesselData: could not find elements of a vertex, unexpected')
+                end if 
+            end do 
+            call tempps2%Construct(elv, dgdata%elvx, dgdata%elvy, ellbl)
+            call triangulationvessel%plfelements%Initialize(tempps2)
+            deallocate(elv)
 
             ! Initialize triangulation vessel
             triangulationvessel%nstructures = int(size(triangulationstructures), kind=I4)
@@ -7342,7 +7466,7 @@ module goatmod_types
         character(*), intent(in)        :: filepath 
 
         ! Auxiliary
-        integer(I8)                             :: np1, np2, nfcLbl
+        integer(I8)                             :: np1, np2, nfcLbl, tv
         integer(I8), allocatable, dimension(:)  :: tempi, fcLbl, v1, v2, &
             worki 
         logical                                 :: reachedeof, hasp1, &
@@ -7352,6 +7476,8 @@ module goatmod_types
         character(:), allocatable       :: thisline
 
         ! Loop
+        integer(I8)                             :: i, k
+        integer(I8), allocatable, dimension(:)  :: cc
 
         ! Data
         integer         :: fid
@@ -7485,6 +7611,9 @@ module goatmod_types
                 ! Set number of elements
                 dgdata%nel = np1 
                 print *, 'ReadDGData: number of elements = ', dgdata%nel
+
+                ! Set element list
+                dgdata%elID = [(k, k = 1, dgdata%nel)]
             end if 
         else
             ! Inconsistent 
@@ -7697,14 +7826,43 @@ module goatmod_types
             dgdata%elvy = y 
             dgdata%elv1 = v1 
             dgdata%elv2 = v2
+            dgdata%nv = size(x)
 
             ! rescale x, y (originally in mm)
             dgdata%elvx = dgdata%elvx/1e3_R8
             dgdata%elvy = dgdata%elvy/1e3_R8
+
+            ! Add also to which element(s) each vertex belongs
+            allocate(dgdata%vellistp1(size(x)), &
+                dgdata%vellistp2(size(x)), cc(size(x))) 
+            dgdata%vellistp1 = 0
+            dgdata%vellistp2 = 0
+            cc = 0
+            if (size(x) > 0) then 
+                dgdata%vellistp1(1) = 1 
+            end if 
+            do i = 1, size(dgdata%elv1) 
+                ! Update pointer
+                dgdata%vellistp2(dgdata%elv1(i)) = dgdata%vellistp2(dgdata%elv1(i)) + 1
+                dgdata%vellistp2(dgdata%elv2(i)) = dgdata%vellistp2(dgdata%elv2(i)) + 1  
+            end do 
+            do i = 2, size(x)
+                dgdata%vellistp1(i) = dgdata%vellistp1(i-1) + dgdata%vellistp2(i-1)
+            end do 
+            allocate(dgdata%vellist(sum(dgdata%vellistp2)))
+            dgdata%vellist = 0
+            do i = 1, size(dgdata%elv1)
+                ! First vertex
+                tv = dgdata%elv1(i)
+                dgdata%vellist(dgdata%vellistp1(tv)+cc(tv)) = i 
+                cc(tv) = cc(tv) + 1
+
+                ! Second vertex
+                tv = dgdata%elv2(i)
+                dgdata%vellist(dgdata%vellistp1(tv)+cc(tv)) = i 
+                cc(tv) = cc(tv) + 1
+            end do 
         end if 
-
-
-
     end subroutine
 
     ! Structure extraction
@@ -7731,6 +7889,14 @@ module goatmod_types
         ! Note: under the hood this routine uses the polygon edge 
         ! sorter to determine all structures etc. 
 
+        ! Note: we currently track the vertex IDs and elements per 
+        ! per vertex for each structure. For the latter, we only
+        ! consider elements that were passed when extracting the 
+        ! structures! This is important if vertices belong to more
+        ! than two elements, but where only two of those constitute
+        ! a structure (structures are by definition assumed to be 
+        ! simple polygons, so we will throw an error here if necessary) 
+
         ! Declare variables
         !==================
         ! Arguments
@@ -7743,7 +7909,7 @@ module goatmod_types
         ! Auxiliary
         integer(I8)                             :: si, ei, nel
         integer(I8), allocatable, dimension(:)  :: fcLbl, &
-            sortindex, pv 
+            sortindex, pv
         integer(I8), allocatable                :: pein(:, :), &
             sortededges(:, :)
         logical, allocatable, dimension(:)      :: ispolygonstart, &
@@ -7838,6 +8004,7 @@ module goatmod_types
                 structures(k)%isclosed = .false. 
             end if 
             structures(k)%ID = int(k, kind=I4) 
+            structures(k)%vertID = pv 
             
             ! Check label
             if (dgdata%hasElFcLbl) then 
@@ -7855,7 +8022,7 @@ module goatmod_types
     end subroutine
 
     ! Vessel structure extraction
-    subroutine ExtractDGVesselStructures(dgdata, structures, flag)
+    subroutine ExtractDGVesselStructures(dgdata, structures, vesselelIDs, flag)
 
         ! Description
         !============
@@ -7865,7 +8032,7 @@ module goatmod_types
         ! checking for each unique vessel label (propagated to 
         ! structure.label) which elements belong to it, and how many
         ! polygons (vessel structures) that can be constructed from it.
-        ! Normally, only one, non-brancching, non-selfintersecting 
+        ! Normally, only one, non-branching, non-selfintersecting 
         ! polygon should emerge, otherwise we throw an error.
          
         ! Note: vessel elements are assumed to hold a non-zero label
@@ -7873,22 +8040,27 @@ module goatmod_types
         ! assumed to be non-branching, simple polygons, and should have
         ! the same label on all elements
 
+        ! Note: we now also return a vector with all vessel element IDs.
+        ! In principle, these elements are already available through
+        ! dgdata%elvessel, but this may change in the future
+
         ! Declare variables
         !==================
         ! Arguments
         class(DivGeoDataUDT)            :: dgdata
         type(VesselStructureUDT), allocatable, intent(out)  :: structures(:) 
+        integer(I8), allocatable, dimension(:), intent(out) :: vesselelIDs
         integer(I8), intent(out)        :: flag
 
         ! Auxiliary
         integer(I8)                 :: nvs, tfcLbl 
         integer(I8), allocatable, dimension(:)  :: fcLblu, vessfcLbl, &
-            tel
+            tel, tempel, vertel, pv
         type(VesselStructureUDT), allocatable, dimension(:)     :: &
             tempstructures
 
         ! Loop
-        integer(I8)                 :: i
+        integer(I8)                 :: i, j
 
         ! Extract structures
         !===================
@@ -7919,6 +8091,7 @@ module goatmod_types
         end if
 
         ! Compute unique number of face labels
+        vesselelIDs = dgdata%elvessel 
         vessfcLbl = dgdata%elfcLbl(dgdata%elvessel)
         call Unique(vessfcLbl, fcLblu)
         nvs = size(fcLblu)
@@ -7956,6 +8129,41 @@ module goatmod_types
             structures(i)%ID = int(i, kind=I4) 
             structures(i)%label = int(fcLblu(i), kind=I4)
 
+            ! Determine vertex elements
+            pv = structures(i)%vertID
+            if (allocated(structures(i)%elID1)) deallocate(structures(i)%elID1)
+            if (allocated(structures(i)%elID2)) deallocate(structures(i)%elID2)
+            allocate(structures(i)%elID1(size(pv)), structures(i)%elID2(size(pv)))
+            structures(i)%elID1 = 0
+            structures(i)%elID2 = 0
+            do j = 1, size(pv)
+                ! Get the elements
+                vertel = dgdata%GetVertexElements(pv(j))
+
+                ! Get elements that are in common with the current given elements
+                tempel = GetCommonElements(vertel, dgdata%elvessel)
+
+                ! Add
+                if (size(tempel) == 1) then 
+                    structures(i)%elID1(j) = tempel(1)
+                elseif (size(tempel) == 2) then 
+                    structures(i)%elID1(j) = tempel(1)
+                    structures(i)%elID2(j) = tempel(2)
+                elseif (size(tempel) > 2) then 
+                    ! Shouldn't be possible normally speaking
+                    print *,'Elements in DivGeo: ', vertel 
+                    call gdErrorHandler('ExtractDGStructures: found a ' // & 
+                        'vertex that belongs to multiple given elements, ' // & 
+                        'which would lead to branching structures. Not ' // & 
+                        'supported')
+                elseif (size(tempel) < 1) then 
+                    ! Also shouldn't be possible
+                    call gdErrorHandler('ExtractDGStructures: could not ' // &
+                        'find any elements to which this vertex belongs, ' // &
+                        'probably a bug')
+                end if 
+            end do
+
             ! Housekeeping
             deallocate(tel)
         end do 
@@ -7966,7 +8174,8 @@ module goatmod_types
     end subroutine
  
     ! Void structure extraction
-    subroutine ExtractDGTriangulationStructures(dgdata, structures, flag)
+    subroutine ExtractDGTriangulationStructures(dgdata, structures, &
+        triangelIDs, flag)
 
         ! Description
         !============
@@ -7985,11 +8194,12 @@ module goatmod_types
         class(DivGeoDataUDT)            :: dgdata
         type(VesselStructureUDT), allocatable, intent(out)  :: structures(:) 
         integer(I8), intent(out)        :: flag
+        integer(I8), allocatable, dimension(:), intent(out) :: triangelIDs
 
         ! Auxiliary
         integer(I8)                 :: nvs, tfcLbl, flagv 
         integer(I8), allocatable, dimension(:)  :: fcLblu, vessfcLbl, &
-            tel, temptrimark 
+            tel, temptrimark, allelID, tempel, vertel, pv, dummy
         type(VesselStructureUDT), allocatable, dimension(:)     :: &
             tempstructures, vesselstructures
 
@@ -8032,7 +8242,7 @@ module goatmod_types
         ! Extract standard vessel structures
         !===================================
         ! Extract vessel structures using dedicated routine
-        call ExtractDGVesselStructures(dgdata, vesselstructures, flagv)
+        call ExtractDGVesselStructures(dgdata, vesselstructures, dummy, flagv)
 
         ! Sanity check
         if (flagv /= 0) then 
@@ -8055,6 +8265,11 @@ module goatmod_types
         vessfcLbl = pack(temptrimark, temptrimark /= 0)
         call Unique(vessfcLbl, fcLblu)
         nvs = size(fcLblu)
+
+        ! Compute element IDs considered here
+        allelID = dgdata%elvessel ! vessel elements
+        allelID = [allelID, pack([(k, k = 1, dgdata%nel)],temptrimark /=  0)] ! additional void edges
+        triangelIDs = allelID
 
         ! Allocate
         allocate(structures(0)) ! not a priori known how many polygons we'll have
@@ -8091,6 +8306,43 @@ module goatmod_types
 
             ! Housekeeping
             deallocate(tel)
+        end do 
+
+        ! Determine vertex elements
+        do i = 1, size(structures)
+            pv = structures(i)%vertID
+            if (allocated(structures(i)%elID1)) deallocate(structures(i)%elID1)
+            if (allocated(structures(i)%elID2)) deallocate(structures(i)%elID2)
+            allocate(structures(i)%elID1(size(pv)), structures(i)%elID2(size(pv)))
+            structures(i)%elID1 = 0
+            structures(i)%elID2 = 0
+            do j = 1, size(pv)
+                ! Get the elements
+                vertel = dgdata%GetVertexElements(pv(j))
+
+                ! Get elements that are in common with the current given elements
+                tempel = GetCommonElements(vertel, allelID)
+
+                ! Add
+                if (size(tempel) == 1) then 
+                    structures(i)%elID1(j) = tempel(1)
+                elseif (size(tempel) == 2) then 
+                    structures(i)%elID1(j) = tempel(1)
+                    structures(i)%elID2(j) = tempel(2)
+                elseif (size(tempel) > 2) then 
+                    ! Shouldn't be possible normally speaking
+                    print *,'Elements in DivGeo: ', vertel 
+                    call gdErrorHandler('ExtractDGStructures: found a ' // & 
+                        'vertex that belongs to multiple given elements, ' // & 
+                        'which would lead to branching structures. Not ' // & 
+                        'supported')
+                elseif (size(tempel) < 1) then 
+                    ! Also shouldn't be possible
+                    call gdErrorHandler('ExtractDGStructures: could not ' // &
+                        'find any elements to which this vertex belongs, ' // &
+                        'probably a bug')
+                end if 
+            end do
         end do 
 
         ! Append vessel structures with non-negative label (and overwrite
@@ -8172,6 +8424,21 @@ module goatmod_types
         close(fu)
 
     end subroutine
+
+    ! Auxiliary data handling functions
+    function GetVertexElementsDGData(dgdata, vID) result(vel)
+        ! Description
+        !============
+        ! Simple function to return elements of a vertex
+
+        ! Declare variables
+        !==================
+        class(DivGeoDataUDT)                    :: dgdata 
+        integer(I8), intent(in)                 :: vID 
+        integer(I8), allocatable, dimension(:)  :: vel
+        vel = dgdata%vellist(dgdata%vellistp1(vID):&
+            dgdata%vellistp1(vID)+dgdata%vellistp2(vID)-1)
+    end function
 
     !------------------------------------------------------------------!
     !                    Auxiliary data extraction                     !

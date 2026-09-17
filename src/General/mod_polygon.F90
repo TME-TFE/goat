@@ -401,7 +401,8 @@ module mod_polygon
     end subroutine
 
     ! Construct starting from unsorted array of edges
-    subroutine ConstructPolygonSetFromEdges(polygonset, edges, x, y)
+    subroutine ConstructPolygonSetFromEdges(polygonset, edges, x, y, &
+        extralabels_opt)
 
         ! Description
         !============
@@ -411,23 +412,27 @@ module mod_polygon
         ! The vertex indices of the edges will be stored as labels in 
         ! the polygon structure.
 
+        ! Note: optionally, additional vertex labels may be parsed, 
+        ! which should also be the same (row) size as x
+
         ! Declare variables
         !==================
         ! Arguments
         class(PolygonSetUDT)        :: polygonset 
         integer(I8), intent(in)     :: edges(:, :)
         real(R8), intent(in)        :: x(:), y(:)
+        integer(I8), intent(in), optional   :: extralabels_opt(:, :)
 
         ! Auxiliary
         integer(I8)                 :: ne, np, tempne
         integer(I8), allocatable    :: sortindex(:), sortededges(:, :), &
             tempedges(:, :), tempvert(:), ps(:), pe(:), &
-            templabels(:, :)
+            templabels(:, :), extralabels(:, :)
 
         logical, allocatable        :: ispolygonstart(:), isbranchingpolygon(:)
 
         ! Loop
-        integer(I8)                 :: i, k
+        integer(I8)                 :: i, j, k
 
         ! Initialize
         !===========
@@ -439,6 +444,11 @@ module mod_polygon
 
         ! Unpack
         ne = size(edges, 1)
+        if (present(extralabels_opt)) then 
+            extralabels = extralabels_opt 
+        else
+            allocate(extralabels(size(x), 0))
+        end if 
 
         ! Allocate
         allocate(sortindex(ne), ispolygonstart(ne), isbranchingpolygon(ne))
@@ -477,8 +487,11 @@ module mod_polygon
                 tempvert)
 
             ! Set labels as vertex indices
-            allocate(templabels(tempne+1, 1))
+            allocate(templabels(tempne+1, 1 + size(extralabels, 2)))
             templabels(:, 1) = tempvert
+            do j = 1, size(extralabels, 2)
+                templabels(:, j+1) = extralabels(tempvert, j)
+            end do 
 
             ! Construct polygon
             call polygonset%polygons(i)%Construct(x(tempvert), &

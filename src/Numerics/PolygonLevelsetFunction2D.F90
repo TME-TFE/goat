@@ -1048,6 +1048,11 @@ module PolygonLevelsetFunction2D
                 call gdErrorHandler('InitializePLF2DClosedExact: polygon set should be closed and non-intersecting')
             end if 
         else
+            ! Allocate all to zero sized arrays
+            allocate(plf%xp(0), plf%yp(0), plf%xf(0), plf%yf(0), &
+                plf%nxp(0), plf%nyp(0), plf%tnp(0), plf%nxpv(0, 2), &
+                plf%nypv(0, 2), plf%crossprod(0), plf%thetav(0), plf%xp1(0), &
+                plf%xp2(0), plf%yp1(0), plf%yp2(0))
             plf%ps = ps 
             return 
         end if 
@@ -2011,7 +2016,7 @@ module PolygonLevelsetFunction2D
         print *,'Empty polygon levelset, cannot evaluate. Returning...'
         return 
     end if 
-    
+
     ! Set mesh size
     if (present(nxin)) then 
         nx = nxin 

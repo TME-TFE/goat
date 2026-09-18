@@ -5382,12 +5382,13 @@ module goatmod_types
             end do
 
             ! Allocate element IDs and set to zero
-            allocate(vessel%structures(i)%elID1(npoints), &
-                vessel%structures(i)%elID2(npoints))
+            allocate(vessel%structures(i)%elID1(abs(npoints)), &
+                vessel%structures(i)%elID2(abs(npoints)), vessel%structures(i)%vertID(abs(npoints)))
 
             ! No element value present in structure.dat file (normally)
             vessel%structures(i)%elID1 = 0
             vessel%structures(i)%elID2 = 0
+            vessel%structures(i)%vertID = 0
         end do
 
         ! Close the file
@@ -5478,6 +5479,7 @@ module goatmod_types
         integer(I8), allocatable, dimension(:)  :: elvesselIDs, &
             eltriangIDs, tvel, tempel
         integer(I8), allocatable, dimension(:, :)   :: elv, ellbl
+        real(R8), allocatable, dimension(:)     :: tempx, tempy
         type(DivGeoDataUDT)                     :: dgdata
 
         ! Main program
@@ -5491,8 +5493,14 @@ module goatmod_types
             call read_structure(filespecifier, vessel, vesseloptions)
 
             ! Set the polygon levelset function for element identification:
-            ! should simply evaluate to zero
-            tempps1%np = 0
+            ! should simply evaluate to zero - set a dummy levelset 
+            ! function 
+            allocate(ellbl(4, 3))
+            ellbl = 0
+            tempx = [0.0, 0.0, 1.0, 0.0];
+            tempy = [0.0, 1.0, 0.0, 0.0];
+            call tempps1%Construct(tempx, tempy, &
+                ellbl)
             call vessel%plfelements%Initialize(tempps1)
     
             ! No additional information on triangulation vessel, so will
@@ -8130,7 +8138,7 @@ module goatmod_types
             structures(i)%label = int(fcLblu(i), kind=I4)
 
             ! Determine vertex elements
-            pv = structures(i)%vertID
+            pv = structures(i)%vertID ! These should be sorted...
             if (allocated(structures(i)%elID1)) deallocate(structures(i)%elID1)
             if (allocated(structures(i)%elID2)) deallocate(structures(i)%elID2)
             allocate(structures(i)%elID1(size(pv)), structures(i)%elID2(size(pv)))
@@ -8199,7 +8207,9 @@ module goatmod_types
         ! Auxiliary
         integer(I8)                 :: nvs, tfcLbl, flagv 
         integer(I8), allocatable, dimension(:)  :: fcLblu, vessfcLbl, &
-            tel, temptrimark, allelID, tempel, vertel, pv, dummy
+            tel, temptrimark, allelID, tempel, vertel, pv, &
+            vesselelemID, tempelID 
+        logical, allocatable, dimension(:)      :: isvesselelement
         type(VesselStructureUDT), allocatable, dimension(:)     :: &
             tempstructures, vesselstructures
 
@@ -8242,7 +8252,8 @@ module goatmod_types
         ! Extract standard vessel structures
         !===================================
         ! Extract vessel structures using dedicated routine
-        call ExtractDGVesselStructures(dgdata, vesselstructures, dummy, flagv)
+        call ExtractDGVesselStructures(dgdata, vesselstructures, &
+            vesselelemID, flagv)
 
         ! Sanity check
         if (flagv /= 0) then 
@@ -8267,7 +8278,18 @@ module goatmod_types
         nvs = size(fcLblu)
 
         ! Compute element IDs considered here
-        allelID = dgdata%elvessel ! vessel elements
+        allocate(allelID(0), tempelID(0))
+        allocate(isvesselelement(dgdata%nel))
+        isvesselelement = .false. 
+        isvesselelement(dgdata%elvessel) = .true.
+        do i = 1, size(vesselstructures)
+            if (vesselstructures(i)%label > 0) then ! only with non-negative label!
+                tempelID = pack([(k, k = 1, dgdata%nel)], &
+                    (dgdata%elfcLbl == vesselstructures(i)%label) .and. &
+                    (isvesselelement)) ! and only those that are part of the vessel...
+                allelID = [allelID, tempelID] 
+            end if 
+        end do 
         allelID = [allelID, pack([(k, k = 1, dgdata%nel)],temptrimark /=  0)] ! additional void edges
         triangelIDs = allelID
 

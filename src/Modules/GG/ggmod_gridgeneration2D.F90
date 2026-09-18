@@ -19520,8 +19520,13 @@ module ggmod_gridgeneration2D
                 labelse = pack(labelse, labelse /= 0)
 
                 ! Check
-                if ((size(labelse) == 0) .or. (size(labelse) >= 2)) then 
-                    ! Weird
+                if (all(labelsv1 == 0) .and. all(labelsv2 == 0)) then 
+                    ! Probably no elID given, just set to zero 
+                    voidlabels(i, 2) = 0
+                    voidlabels(i, 3) = 0
+                    voidlabels(i, 4) = 0
+                elseif ((size(labelse) == 0) .or. (size(labelse) >= 2)) then 
+                    ! Weird - there should be elements
                     call gdErrorHandler('ComputeVoidRegionPolygonSet: ' // & 
                         'could not determine void label of grid vertex')
                 else

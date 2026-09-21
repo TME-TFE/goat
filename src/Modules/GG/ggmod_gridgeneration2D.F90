@@ -19543,7 +19543,21 @@ module ggmod_gridgeneration2D
 
         ! Set labels of non-grid vertices
         do i = vert%ntot+1, size(templabels, 1)
-            voidlabels(i, 4) = vertID(i)
+            if (vertID(i) /= 0) then 
+                ! Should be accurate
+                voidlabels(i, 4) = vertID(i)
+            elseif (edgeID(i) /= 0) then 
+                ! This shouldn't happen, throw warning (grid is still
+                ! usable, void polygon perhaps after tuning)
+                print *, 'WARNING: ComputeVoidRegionPolygonSet: ' // &
+                    'void vertex could not be found, resulting void ' // &
+                    'polygon may not be determined correctly!'
+            else
+                ! Shouldn't happen
+                call gdErrorHandler('ComputeVoidRegionPolygonSet: ' // & 
+                    'point lies neither on an edge or vertex of the ' // & 
+                    'polygon, this is likely a bug')
+            end if 
         end do 
 
         ! Set 'corner' vertices

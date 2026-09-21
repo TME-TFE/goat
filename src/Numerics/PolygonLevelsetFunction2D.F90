@@ -1953,6 +1953,9 @@ module PolygonLevelsetFunction2D
             totsign = [signe, signv]
             val(iq) = minval([fe, fv])
             indmin = minloc([fe, fv], 1)
+            if (fv == 0) then ! Force vertex value if vertex distance is precisely zero
+                indmin = 2
+            end if
             minind(iq) = indmin 
             val(iq) = val(iq)*totsign(indmin)
             if (indmin == 1) then 

@@ -17537,7 +17537,12 @@ module ggmod_gridgeneration2D
         ! effects will fail to identify the void boundaries). This is 
         ! why we loop over topological mesh boundaries that are vessel 
         ! boundaries and check for each face on those boundaries how 
-        ! many vessel structures it covers. If there are multiple, the
+        ! many vessel structures it covers. If there are multiple, we
+        ! first check if there are labels in common between the start 
+        ! and end vertex (and which are non-zero). If so, the common 
+        ! label is taken (this should prevent negative labels for faces
+        ! that are actually fully coincident with a structure with 
+        ! non-negative label). Otherwise, the
         ! smallest structure number is taken - this ensures that void
         ! boundaries are always covered by at least one grid face, 
         ! leading to expected behavior. 
@@ -17567,7 +17572,7 @@ module ggmod_gridgeneration2D
             allsepIDs, tfv, tfsepv, allTPlabels, uvesstructlabels, &
             reslabels, facelabelsGG, facelabelsGD, allstructurelabels, &
             uallstructurelabels, vesselfID, flabels, templabels, &
-            tempf, fclbllist, strIDlist, vesselfaceID
+            tempf, fclbllist, strIDlist, vesselfaceID, commonlabels
         integer(I8), allocatable                    :: edges(:, :), &
             vesstructlabels(:, :), linelabels(:, :), vertlabels(:, :)
         logical, allocatable, dimension(:)          :: &
@@ -17879,22 +17884,47 @@ module ggmod_gridgeneration2D
                     do j = 1, size(tempf)
                         ! Add labels on vertices
                         templabels = [vertlabels(j, :), vertlabels(j+1, :)]
-                        
-                        ! Loop over all labels of points in between 
-                        pointstart = findloc(srfline%dlcv(j) < srfline%dllc, &
-                            .false., 1, back=.true.)+1
-                        pointend = findloc(srfline%dlcv(j+1) >= srfline%dllc, &
-                            .false., 1, back=.false.)-1
 
-                        ! Add labels
-                        templabels = [templabels, linelabels(pointstart:pointend, 1), &
-                            linelabels(pointstart:pointend, 2)]
+                        ! Check for common non-zero labels
+                        commonlabels = GetCommonElements(&
+                            vertlabels(j, :), vertlabels(j+1, :))
+                        commonlabels = pack(commonlabels, commonlabels /= 0)
 
-                        ! Remove zeros
-                        templabels = pack(templabels, templabels /= 0)
+                        if (size(commonlabels) ==  0) then 
+                            
+                            ! Loop over all labels of points in between 
+                            pointstart = findloc(srfline%dlcv(j) < srfline%dllc, &
+                                .false., 1, back=.true.)+1
+                            pointend = findloc(srfline%dlcv(j+1) >= srfline%dllc, &
+                                .false., 1, back=.false.)-1
+                            if (pointend == -1) pointend = size(srfline%dllc)
 
-                        ! Take minimal value
-                        flabels(tempf(j)) = minval(templabels)
+                            ! Add labels
+                            templabels = [templabels, linelabels(pointstart:pointend, 1), &
+                                linelabels(pointstart:pointend, 2)]
+
+                            ! Remove zeros
+                            templabels = pack(templabels, templabels /= 0)
+
+                            ! Take minimal value
+                            flabels(tempf(j)) = minval(templabels)
+
+                            ! Print out
+                            !print *, 'face: ', tempf(j), 'vertices:', simgrid%face%vert(tempf(j), :)
+                            !print *, 'found face labels: ', templabels 
+                            !print *, 'chosen label: ', flabels(tempf(j))
+
+                        elseif (size(commonlabels) == 1) then 
+                            ! Found common label, take that one
+                            flabels(tempf(j)) = commonlabels(1)
+                        else 
+                            ! More than one common label, unexpected?
+                            flabels(tempf(j)) = commonlabels(1)
+                            print *, 'face: ', tempf(j), 'vertices:', simgrid%face%vert(tempf(j), :)
+                            print *, 'found common labels: ', commonlabels 
+                            print *, 'chosen label: ', flabels(tempf(j))
+                        end if 
+
 
                     end do 
 
@@ -17928,22 +17958,47 @@ module ggmod_gridgeneration2D
                     do j = 1, size(tempf)
                         ! Add labels on vertices
                         templabels = [vertlabels(j, :), vertlabels(j+1, :)]
-                        
-                        ! Loop over all labels of points in between 
-                        pointstart = findloc(erfline%dlcv(j) < erfline%dllc, &
-                            .false., 1, back=.true.)+1
-                        pointend = findloc(erfline%dlcv(j+1) >= erfline%dllc, &
-                            .false., 1, back=.false.)-1
 
-                        ! Add labels
-                        templabels = [templabels, linelabels(pointstart:pointend, 1), &
-                            linelabels(pointstart:pointend, 2)]
+                        ! Check for common non-zero labels
+                        commonlabels = GetCommonElements(&
+                            vertlabels(j, :), vertlabels(j+1, :))
+                        commonlabels = pack(commonlabels, commonlabels /= 0)
 
-                        ! Remove zeros
-                        templabels = pack(templabels, templabels /= 0)
+                        if (size(commonlabels) ==  0) then 
+                            
+                            ! Loop over all labels of points in between 
+                            pointstart = findloc(erfline%dlcv(j) < erfline%dllc, &
+                                .false., 1, back=.true.)+1
+                            pointend = findloc(erfline%dlcv(j+1) >= erfline%dllc, &
+                                .false., 1, back=.false.)-1
+                            if (pointend == -1) pointend = size(erfline%dllc)
 
-                        ! Take minimal value
-                        flabels(tempf(j)) = minval(templabels)
+
+                            ! Add labels
+                            templabels = [templabels, linelabels(pointstart:pointend, 1), &
+                                linelabels(pointstart:pointend, 2)]
+
+                            ! Remove zeros
+                            templabels = pack(templabels, templabels /= 0)
+
+                            ! Take minimal value
+                            flabels(tempf(j)) = minval(templabels)
+
+                            ! Print out
+                            !print *, 'face: ', tempf(j), 'vertices:', simgrid%face%vert(tempf(j), :)
+                            !print *, 'found face labels: ', templabels 
+                            !print *, 'chosen label: ', flabels(tempf(j))
+
+                        elseif (size(commonlabels) == 1) then 
+                            ! Found common label, take that one
+                            flabels(tempf(j)) = commonlabels(1)
+                        else 
+                            ! More than one common label, unexpected?
+                            flabels(tempf(j)) = commonlabels(1)
+                            print *, 'face: ', tempf(j), 'vertices:', simgrid%face%vert(tempf(j), :)
+                            print *, 'found common labels: ', commonlabels 
+                            print *, 'chosen label: ', flabels(tempf(j))
+                        end if 
 
                     end do 
 
@@ -17980,23 +18035,47 @@ module ggmod_gridgeneration2D
                         do j = 1, size(tempf)
                             ! Add labels on vertices
                             templabels = [vertlabels(j, :), vertlabels(j+1, :)]
-                            
-                            ! Loop over all labels of points in between 
-                            pointstart = findloc(thisline%dlcv(j) < thisline%dllc, &
-                                .false., 1, back=.true.)+1
-                            pointend = findloc(thisline%dlcv(j+1) >= thisline%dllc, &
-                                .false., 1, back=.false.)-1
 
-                            ! Add labels
-                            templabels = [templabels, linelabels(pointstart:pointend, 1), &
-                                linelabels(pointstart:pointend, 2)]
+                            ! Check for common non-zero labels
+                            commonlabels = GetCommonElements(&
+                                vertlabels(j, :), vertlabels(j+1, :))
+                            commonlabels = pack(commonlabels, commonlabels /= 0)
 
-                            ! Remove zeros
-                            templabels = pack(templabels, templabels /= 0)
+                            if (size(commonlabels) ==  0) then 
+                                
+                                ! Loop over all labels of points in between 
+                                pointstart = findloc(thisline%dlcv(j) < thisline%dllc, &
+                                    .false., 1, back=.true.)+1
+                                pointend = findloc(thisline%dlcv(j+1) >= thisline%dllc, &
+                                    .false., 1, back=.false.)-1
+                                if (pointend == -1) pointend = size(thisline%dllc)
 
-                            ! Take minimal value
-                            flabels(tempf(j)) = minval(templabels)
 
+                                ! Add labels
+                                templabels = [templabels, linelabels(pointstart:pointend, 1), &
+                                    linelabels(pointstart:pointend, 2)]
+
+                                ! Remove zeros
+                                templabels = pack(templabels, templabels /= 0)
+
+                                ! Take minimal value
+                                flabels(tempf(j)) = minval(templabels)
+
+                                ! Print out
+                                !print *, 'face: ', tempf(j), 'vertices:', simgrid%face%vert(tempf(j), :)
+                                !print *, 'found face labels: ', templabels 
+                                !print *, 'chosen label: ', flabels(tempf(j))
+
+                            elseif (size(commonlabels) == 1) then 
+                                ! Found common label, take that one
+                                flabels(tempf(j)) = commonlabels(1)
+                            else 
+                                ! More than one common label, unexpected?
+                                flabels(tempf(j)) = commonlabels(1)
+                                print *, 'face: ', tempf(j), 'vertices:', simgrid%face%vert(tempf(j), :)
+                                print *, 'found common labels: ', commonlabels 
+                                print *, 'chosen label: ', flabels(tempf(j))
+                            end if 
                         end do 
 
                         ! Housekeeping
@@ -18034,24 +18113,48 @@ module ggmod_gridgeneration2D
                         do j = 1, size(tempf)
                             ! Add labels on vertices
                             templabels = [vertlabels(j, :), vertlabels(j+1, :)]
-                            
-                            ! Loop over all labels of points in between 
-                            pointstart = findloc(thisline%dlcv(j) < thisline%dllc, &
-                                .false., 1, back=.true.)+1
-                            pointend = findloc(thisline%dlcv(j+1) >= thisline%dllc, &
-                                .false., 1, back=.false.)-1
 
-                            ! Add labels
-                            templabels = [templabels, linelabels(pointstart:pointend, 1), &
-                                linelabels(pointstart:pointend, 2)]
+                            ! Check for common non-zero labels
+                            commonlabels = GetCommonElements(&
+                                vertlabels(j, :), vertlabels(j+1, :))
+                            commonlabels = pack(commonlabels, commonlabels /= 0)
 
-                            ! Remove zeros
-                            templabels = pack(templabels, templabels /= 0)
+                            if (size(commonlabels) ==  0) then 
+                                
+                                ! Loop over all labels of points in between 
+                                pointstart = findloc(thisline%dlcv(j) < thisline%dllc, &
+                                    .false., 1, back=.true.)+1
+                                pointend = findloc(thisline%dlcv(j+1) >= thisline%dllc, &
+                                    .false., 1, back=.false.)-1
+                                if (pointend == -1) pointend = size(thisline%dllc)
 
-                            ! Take minimal value
-                            flabels(tempf(j)) = minval(templabels)
 
-                        end do 
+                                ! Add labels
+                                templabels = [templabels, linelabels(pointstart:pointend, 1), &
+                                    linelabels(pointstart:pointend, 2)]
+
+                                ! Remove zeros
+                                templabels = pack(templabels, templabels /= 0)
+
+                                ! Take minimal value
+                                flabels(tempf(j)) = minval(templabels)
+
+                                ! Print out
+                                !print *, 'face: ', tempf(j), 'vertices:', simgrid%face%vert(tempf(j), :)
+                                !print *, 'found face labels: ', templabels 
+                                !print *, 'chosen label: ', flabels(tempf(j))
+
+                            elseif (size(commonlabels) == 1) then 
+                                ! Found common label, take that one
+                                flabels(tempf(j)) = commonlabels(1)
+                            else 
+                                ! More than one common label, unexpected?
+                                flabels(tempf(j)) = commonlabels(1)
+                                print *, 'face: ', tempf(j), 'vertices:', simgrid%face%vert(tempf(j), :)
+                                print *, 'found common labels: ', commonlabels 
+                                print *, 'chosen label: ', flabels(tempf(j))
+                            end if 
+                        end do
 
                         ! Housekeeping
                         deallocate(tempf)
@@ -18920,7 +19023,7 @@ module ggmod_gridgeneration2D
 
         ! Algorithm
         !==========
-        ! 1)    Determine the topomesh vertices that are both on an aligned and vessel
+        ! 1)    Determine the vertices that are both on an aligned and vessel
         !       boundary (these form the 'corners' of the domain)
         ! 2)    Determine on which vessel edges these vertices lie and 
         !       split these edges
@@ -19220,6 +19323,12 @@ module ggmod_gridgeneration2D
                     pointend = findloc(srfline%dlcv(j+1) >= templine%dlcv, &
                         .false., 1, back=.false.)-1
 
+                    ! Hedge for end point
+                    if (pointend == -1) then 
+                        ! last point
+                        pointend = size(templine%dlcv)
+                    end if 
+
                     ! Mark for removal
                     includepoints(pointstart:pointend) = .false. 
 
@@ -19326,6 +19435,12 @@ module ggmod_gridgeneration2D
                         .false., 1, back=.true.)+1
                     pointend = findloc(erfline%dlcv(j+1) >= templine%dlcv, &
                         .false., 1, back=.false.)-1
+
+                    ! Hedge for end point
+                    if (pointend == -1) then 
+                        ! last point
+                        pointend = size(templine%dlcv)
+                    end if 
 
                     ! Mark for removal
                     includepoints(pointstart:pointend) = .false. 
@@ -19436,6 +19551,12 @@ module ggmod_gridgeneration2D
                             .false., 1, back=.true.)+1
                         pointend = findloc(origline%dlcv(j+1) >= templine%dlcv, &
                             .false., 1, back=.false.)-1
+
+                        ! Hedge for end point
+                        if (pointend == -1) then 
+                            ! last point
+                            pointend = size(templine%dlcv)
+                        end if 
 
                         ! Mark for removal
                         includepoints(pointstart:pointend) = .false. 

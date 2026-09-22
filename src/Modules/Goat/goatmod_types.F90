@@ -8091,6 +8091,15 @@ module goatmod_types
         
         ! Check if all vessel labels are non-zero
         if (any(dgdata%elfcLbl(dgdata%elvessel) == 0)) then 
+            print *, 'element ID | x coord [m] | y coord [m]'
+            do i  = 1, size(dgdata%elvessel)
+                
+                if (dgdata%elfcLbl(dgdata%elvessel(i)) == 0) then
+                    print *, dgdata%elvessel(i), &
+                        0.5*(dgdata%elvx(dgdata%elv1(dgdata%elvessel(i)))+dgdata%elvx(dgdata%elv2(dgdata%elvessel(i)))), &
+                        0.5*(dgdata%elvy(dgdata%elv1(dgdata%elvessel(i)))+dgdata%elvy(dgdata%elv2(dgdata%elvessel(i))))
+                end if 
+            end do 
             print *, 'ExtractDGVesselStructures: vessel segments with ' // &
                 'zero label detected, not supported. Check dg setup. ' // & 
                 'Returning...'

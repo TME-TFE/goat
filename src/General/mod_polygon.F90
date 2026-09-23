@@ -2720,25 +2720,8 @@ module mod_polygon
         call polygon%SelfIntersections(x, y, s1, s2)
 
         if (size(x) > 0) then 
-            ! Self-intersections found, need to check 
-            if (size(x) > 1) then 
-                isselfintersecting = .true. 
-            else 
-                ! Additional check on closure
-                if (polygon%isclosed) then 
-                    if ( (s1(1) .ne. 1) .and. (s2(1) .ne. 1) ) then
-                        ! Something wrong here, this shouldn't be happening
-                        call PolygonErrorHandler('SelfIntersections: ' &
-                            // 'closed polygon with single ' &
-                            // 'intersection that is not on end ' &
-                            // 'points detected - chck input')
-                    end if 
-                    ! Otherwise, do nothing - closed polygons are 
-                    ! not considered self-intersecting
-                else
-                    isselfintersecting = .true. 
-                end if 
-            end if
+            ! Self-intersections found
+            isselfintersecting = .true. 
         end if 
 
     end function
@@ -4481,7 +4464,7 @@ module mod_polygon
             temps2(:)
 
         ! Loop
-        integer(I8)                             :: i, j 
+        integer(I8)                             :: i, j, jend
 
         ! Initialize
         !===========
@@ -4522,7 +4505,7 @@ module mod_polygon
         ! Compute intersections
         !======================
         ! Loop over the edges of the polygon
-        do i = 2, ne-2 
+        do i = 2, ne-2 ! skip first edge, dealt with separately
             ! Get coordinates of this edge
             xei1 = xp(edges(i, 1))
             yei1 = yp(edges(i, 1))
@@ -4531,7 +4514,7 @@ module mod_polygon
 
             ! Loop over remaining polygon segments, but skip 
             ! neighbouring edges 
-            do j = i+3, ne 
+            do j = i+2, ne 
                 ! Get coordinates of this edge
                 xej1 = xp(edges(j, 1))
                 yej1 = yp(edges(j, 1))
@@ -4561,22 +4544,30 @@ module mod_polygon
             end do 
         end do 
 
-        ! If the polygon is not closed, check the last edge and first 
-        ! edge
+        ! Deal with the first edge for closed and open polygons
         if (.not. polygon%isclosed) then 
-            i = 1
-            j = ne 
-            xei1 = xp(edges(i, 1))
-            yei1 = yp(edges(i, 1))
-            xei2 = xp(edges(i, 2))
-            yei2 = yp(edges(i, 2))
+            jend = ne 
+        else
+            jend = ne-1
+        end if 
+        i = 1
+        ! Get coordinates of this edge
+        xei1 = xp(edges(i, 1))
+        yei1 = yp(edges(i, 1))
+        xei2 = xp(edges(i, 2))
+        yei2 = yp(edges(i, 2))
+
+        ! Loop over the remaining edges
+        do j = i+2, jend 
+            ! Get coordinates of this edge
             xej1 = xp(edges(j, 1))
             yej1 = yp(edges(j, 1))
             xej2 = xp(edges(j, 2))
             yej2 = yp(edges(j, 2))
+            
+            ! Compute intersections
             call SegmentIntersections(xi, yi, xei1, yei1, xei2, yei2, &
                 xej1, yej1, xej2, yej2) 
-            
             
             ! Check if there is an intersection 
             if (.not. isnan(xi)) then  
@@ -4593,40 +4584,8 @@ module mod_polygon
                 tempy(counter) = yi 
                 temps1(counter) = i 
                 temps2(counter) = j 
-            end if
-
-            if (ne > 3) then 
-                j = 3 
-                xei1 = xp(edges(i, 1))
-                yei1 = yp(edges(i, 1))
-                xei2 = xp(edges(i, 2))
-                yei2 = yp(edges(i, 2))
-                xej1 = xp(edges(j, 1))
-                yej1 = yp(edges(j, 1))
-                xej2 = xp(edges(j, 2))
-                yej2 = yp(edges(j, 2))
-                call SegmentIntersections(xi, yi, xei1, yei1, xei2, yei2, &
-                    xej1, yej1, xej2, yej2) 
-                
-                
-                ! Check if there is an intersection 
-                if (.not. isnan(xi)) then  
-                    ! Intersection found, add
-                    counter = counter + 1
-                    if (counter > size(tempx)) then 
-                        ! Extend
-                        tempx = [tempx, 0*tempx]
-                        tempy = [tempy, 0*tempy]
-                        temps1 = [temps1, 0*temps1]
-                        temps2 = [temps2, 0*temps2]
-                    end if 
-                    tempx(counter) = xi 
-                    tempy(counter) = yi 
-                    temps1(counter) = i 
-                    temps2(counter) = j 
-                end if  
             end if 
-        end if 
+        end do 
             
 
         ! Add to output

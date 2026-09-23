@@ -19021,6 +19021,18 @@ module ggmod_gridgeneration2D
         ! based on which one can determine which edges may be refined
         ! and which not. 
 
+        ! Note: the resulting polygon set may self-intersect. In order
+        ! to mitigate this, void vertices may be moved to the exterior.
+        ! This may result, depending on local grid resolution, in a 
+        ! different geometry and consequently different results. We save
+        ! the original void polygon in case the user wishes to resolve
+        ! this manually. The reason we move vertices, is because deleting
+        ! them would result in a 'gap' when mapping vertices back to 
+        ! void elements in the original geometry. This may be an issue
+        ! in a later stage when using the void polygon for preprocessing
+        ! etc. Of course, the final geometry and hence simulation setup
+        ! will also slightly change...
+
         ! Algorithm
         !==========
         ! 1)    Determine the vertices that are both on an aligned and vessel
@@ -19036,12 +19048,23 @@ module ggmod_gridgeneration2D
         !       edges are found, we refine the original polygon by 
         !       dividing each edge in two. 
         ! 5)    Build the void polygon set
+        ! 6)    Check for self-intersections. If they are present:
+        !   6.1)    Save the original polygon and issue a message
+        !   6.2)    Check for each polygon where self-intersections
+        !           occur.
+        !   6.3)    Move any vertices that lie inside the grid to the
+        !           first exterior edge
+        !   6.4)    Retry the polygon set orientation
 
         ! Note: to use the polygon set constructor, we need to keep 
         ! track of the edge vertices. Since we mix both vessel and grid
         ! vertices, we need to ensure proper numbering! Here, we append
         ! the vessel polygon vertices to the grid vertices, so the local
         ! vessel polygon vertex IDs need to be updated by adding grid%vert%ntot
+
+        ! Note: the removal of self intersections is not straightforward 
+        ! and may in several cases still fail. Messages for this will
+        ! be shown
 
         ! Modules
         !========
@@ -19060,19 +19083,21 @@ module ggmod_gridgeneration2D
         ! Auxiliary
         integer(I8)                                 :: tedgeID, &
             temploc, tempfID, pointstart, pointend, flag, tv1, &
-            tv2
+            tv2, gridedge, voidedge, tv
         integer(I8), allocatable, dimension(:)      :: edgeID, vertID, &
             splitvertID, uedgeID, sortind, allvert, &
             voidedgevID1, voidedgevID2, vesseledgeID1, vesseledgeID2, &
-            tempf, bndfaces, labelsv1, labelsv2, labelse
+            tempf, bndfaces, labelsv1, labelsv2, labelse, s1, s2, &
+            movevert, sortindex, fwvert, bwvert
         integer(I8), allocatable, dimension(:, :)   :: labels, &
             voidedgevID, voidlabels, templabels
         logical, allocatable, dimension(:)          :: isalbndface, &
             isvesselface, isalignedvert, isvesselvert, &
             istp, isvoidedge, issplitvesseledge, allistp, &
-            issplitvert, includepoints
+            issplitvert, includepoints, isgridvertex, isgridedge
+        real(R8)                                    :: dx, dy 
         real(R8), allocatable, dimension(:)         :: alldist, &
-            tempdlcv
+            tempdlcv, x, y, dxv, dyv, distr, xnew, ynew
         type(PolygonSetUDT)                         :: tempvoidps
         type(PolygonLevelsetFunction2DClosedExactUDT)   :: tempvoidplf
         type(GGTMFieldlineDataUDT)                  :: templine, origline
@@ -19691,13 +19716,206 @@ module ggmod_gridgeneration2D
         ! Orient (only if polygon present)
         if (voidps%np > 0) then 
             call voidps%OrientNestedClosedPolygons(flag)
-            if (flag /= 0) then 
+            if (flag /= 0 .and. flag /= 5) then 
                 print *, 'warning: void region polygons could not be oriented, ' // & 
                     'output may be unexpected!'
+            elseif (flag == 5) then 
+                ! self-intersections, print message
+                print *, 'ComputeVoidRegionPolygonSet: initial void ' // & 
+                    'polygon set is self-intersecting. Attempting to ' // & 
+                    'remove self-intersections by moving grid vertices. ' // & 
+                    'The original void polygon set is stored in ' // &
+                    '"voidpolygon_selfintersecting.dat" and "fort_goat_intersecting.78"'
+
+                ! Write original set
+                call voidps%WriteData('voidpolygon_selfintersecting')
+                call WriteVoidRegionFileGoat(voidps, simgrid, 'fort_goat_intersecting.78')
             end if 
         else
+            ! Just return
             print *, 'ComputeVoidRegionPolygonSet: no void polygons detected'
+            return 
         end if
+
+        ! Check for self-intersections
+        !=============================
+        if (flag == 5) then 
+            ! Loop over all polygons
+            do i = 1, voidps%np 
+                ! Associate for ease
+                associate(pol => voidps%polygons(i))
+
+                ! Hedge for open polygons
+                if (.not. pol%isclosed) then 
+                    print *, 'ComputeVoidRegionPolygonSet: open polygon ' // & 
+                        'detected, polygonset cannot be closed'
+                    cycle 
+                end if
+
+                ! Compute self-intersections
+                call pol%SelfIntersections(x, y, s1, s2)
+
+                ! Skip if no intersections present
+                if (size(x) == 0) then 
+                    cycle 
+                end if                
+                
+                ! Sort the intersections
+                allocate(sortindex(size(s1)))
+                call Sort(s1, ind=sortindex, ascend=.true.)
+                s2 = s2(sortindex)
+                x = x(sortindex)
+                y = y(sortindex)
+
+                ! Determine, based on labels, which vertices are grid
+                ! vertices and which ones are  void vertices
+                isgridvertex = pol%labels(pol%vert, 1) <= simgrid%vert%ntot 
+                isgridedge = isgridvertex(1:pol%ne) .and. isgridvertex(2:pol%ne+1)
+                isvoidedge = .not. (isgridvertex(1:pol%ne) .or. isgridvertex(2:pol%ne+1))
+
+                ! Checks
+                if (any(isgridedge(s1) .and. isgridedge(s2))) then 
+                    ! Grid intersects itself, self-intersections will always be present
+                    print *, 'ComputeVoidRegionPolygonSet: appears to ' // & 
+                        'have self-intersections at the boundary, cannot ' // & 
+                        'ensure non-intersecting void polygon'
+                    
+                    ! Skip this polygon
+                    cycle 
+                end if 
+                if (any(isvoidedge(s1) .and. isvoidedge(s2))) then 
+                    ! Void polygon intersects itself in void edges - should have actually been checked before
+                    print *, 'ComputeVoidRegionPolygonSet: void polygon ' // &
+                        'appears to be self-intersecting in original void ' // & 
+                        'edges, check input of void elements'
+                    cycle 
+                end if 
+                if ((any(.not. isgridedge(s1) .and. .not. isvoidedge(s1))) .or. &
+                    (any(.not. isgridedge(s2) .and. .not. isvoidedge(s2)))) then 
+                    ! Some edges were not classified as void or grid edges
+                    print *, 'ComputeVoidRegionPolygonSet: some edges are neither ' // &
+                        'a void edge or a grid edge. This may indicate that ' // & 
+                        'the intersection happens in a void polygon vertex, ' // &
+                        'which is currently not yet supported. '
+                    cycle 
+                end if 
+                if (any(s1(1:size(s1)-1) - s1(2:size(s1)) == 0)) then 
+                    ! Multiple intersections in a single edge, not yet supported
+                    print *, 'ComputeVoidRegionPolygonSet: multiple ' // &
+                        'intersections in a single edge detected, ' // & 
+                        'not yet supported'
+                    cycle 
+                end if 
+
+                ! Loop over all intersections
+                do j = 1, size(s1)
+                    ! Check which edge is the grid edge and which one
+                    ! is the void edge
+                    if (isgridedge(s1(j)) .and. isvoidedge(s2(j))) then 
+                        gridedge = s1(j) 
+                        voidedge = s2(j) 
+                    else  ! Exception cases should've been caught beforehand
+                        gridedge = s2(j)
+                        voidedge = s1(j) 
+                    end if 
+
+                    ! Determine the vertices that lie in between these edges
+                    ! by determining which void polygon piece is intersected
+                    ! by the grid edge
+                    allocate(fwvert(0), bwvert(0))
+                    k = voidedge+1 ! to  include voidedge
+                    do while (.true.) ! backward check
+                        ! Update counter
+                        k = k-1
+                        if (k == 0) then 
+                            k = size(pol%vert)-1 ! closed polygon, so skip first vertex
+                        end if 
+
+                        ! Prepend the vertex
+                        fwvert = [k, fwvert]
+
+                        ! Check
+                        if (isgridvertex(k)) then ! first grid vertex is included for checks later
+                            ! Exit
+                            exit
+                        elseif (k == voidedge+1) then 
+                            ! Weird
+                            call gdErrorHandler('did not find any grid edges, this is a bug')
+                        end if
+                    end do 
+                    k = voidedge ! to include voidedge +1
+                    do while (.true.) ! forward check
+                        ! Update counter
+                        k = k+1
+                        if (k >= size(pol%vert)) then 
+                            k = 1 
+                        end if 
+
+                        ! Prepend the vertex
+                        bwvert = [k, bwvert]
+
+                        ! Check
+                        if (isgridvertex(k)) then 
+                            exit
+                        elseif (k == voidedge) then 
+                            ! Weird
+                            call gdErrorHandler('did not find any grid edges, this is a bug')
+                        end if
+                    end do 
+
+                    ! Determine which ones to move
+                    if (any(fwvert(1) == [gridedge, gridedge+1])) then 
+                        movevert = fwvert(2:)
+                        tv = voidedge+1
+                    elseif (any(bwvert(1)== [gridedge, gridedge+1])) then 
+                        movevert = bwvert(2:)
+                        tv = voidedge
+                    else
+                        ! Weird
+                        print *, 'ComputeVoidRegionPolygonSet: could ' // & 
+                            'not determine which vertices to move'
+
+                        ! Skip this one
+                        cycle
+                    end if 
+
+                    ! Housekeeping
+                    deallocate(fwvert, bwvert)
+
+                    ! Determine interval on which to distribute the vertices
+                    dx = x(j) - pol%x(pol%vert(tv))
+                    dy = y(j) - pol%y(pol%vert(tv))
+
+                    ! Distribute
+                    distr = real([(k, k = 0, size(movevert)+1)], kind=R8)/real(size(movevert)+1, kind=R8)
+                    dxv = dx*distr(2:size(movevert)+1)
+                    dyv = dy*distr(2:size(movevert)+1)
+
+                    ! Update polygon
+                    xnew = pol%x 
+                    ynew = pol%y
+                    xnew(pol%vert(movevert)) = pol%x(tv) + dxv
+                    ynew(pol%vert(movevert)) = pol%y(tv) + dyv 
+                    call pol%UpdateCoordinates(xnew, ynew)
+
+                end do 
+                    
+                end associate
+            end do 
+
+            ! Reattempt to orient the polygon
+            call voidps%OrientNestedClosedPolygons(flag)
+            if (flag /= 0 ) then 
+                print *, 'ComputeVoidRegionPolygonSet: void polygons ' // & 
+                    'could not be adjusted after attempt to remove ' // & 
+                    'self-intersections...'
+            else
+                print *, 'ComputeVoidRegionPolygonSet: void polygon ' // &
+                    'vertices have been moved to avoid self-intersections. ' // &
+                    'Orientation of void polygons was succesful'
+            end if 
+        end if 
+
 
         ! Flip - need CCW orientation for SOLPS, but the orientation 
         ! routine provides CW orientation

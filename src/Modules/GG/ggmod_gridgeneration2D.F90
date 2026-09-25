@@ -20007,10 +20007,8 @@ module ggmod_gridgeneration2D
             ! Points (in cm!)
             fmt = '('//Rfm//','//spacefm//','//Rfm//','//spacefm//','//Ifm//')'
             do j = 1, size(pol(i)%vert)
-                ! Check if vertex is vessel vertex or 'corner' vertex - 
-                ! can be marked to be split
-                if ((pol(i)%labels(pol(i)%vert(j), 1) > grid%vert%ntot) .or. &
-                    (pol(i)%labels(pol(i)%vert(j), 2) == 1 )) then 
+                ! Check if vertex is vessel vertex 
+                if ((pol(i)%labels(pol(i)%vert(j), 1) > grid%vert%ntot)) then 
                     dosplit = 1
                 else
                     dosplit = 0
@@ -20124,13 +20122,7 @@ module ggmod_gridgeneration2D
                     gridvertexID    = 0
                     
                 else
-                    if (pol(i)%labels(pol(i)%vert(j), 2) > 0) then 
-                        ! Corner vertex
-                        dosplit = 1
-                    else
-                        ! Regular grid vertex
-                        dosplit  = 0
-                    end if 
+                    dosplit = 0
                     gridvertexID    = pol(i)%labels(pol(i)%vert(j), 1)
                 end if 
                 elID1 = pol(i)%labels(pol(i)%vert(j), 3)

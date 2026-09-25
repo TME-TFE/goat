@@ -7482,6 +7482,7 @@ module goatmod_types
         real(R8), allocatable, dimension(:)     :: tempr, x1, x2, &
             y1, y2, z1, z2, x, y
         character(:), allocatable       :: thisline
+        character(45)                   :: temprc
 
         ! Loop
         integer(I8)                             :: i, k
@@ -7544,6 +7545,9 @@ module goatmod_types
                     exit
                 end if 
 
+                write(temprc,'(3(2X,E13.6))') tempr(1:3)
+                read (temprc,'(3(2X,E13.6))') tempr(1:3)
+
                 ! Add the coordinates
                 x1 = [x1, tempr(1)]
                 y1 = [y1, tempr(2)]
@@ -7587,6 +7591,9 @@ module goatmod_types
                 if (size(tempr) /= 3) then 
                     exit
                 end if 
+
+                write(temprc,'(3(2X,E13.6))') tempr(1:3)
+                read (temprc,'(3(2X,E13.6))') tempr(1:3)
 
                 ! Add the coordinates
                 x2 = [x2, tempr(1)]

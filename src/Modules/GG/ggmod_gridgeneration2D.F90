@@ -20001,11 +20001,11 @@ module ggmod_gridgeneration2D
         ! Polygons
         do i = 1, voidps%np
             ! Number of points
-            fmt = '('//Ifm//')'
+            fmt = '(i12)'
             write(fu, fmt) size(pol(i)%vert)
 
             ! Points (in cm!)
-            fmt = '('//Rfm//','//spacefm//','//Rfm//','//spacefm//','//Ifm//')'
+            fmt = '(2(2X,E21.14),I3)'
             do j = 1, size(pol(i)%vert)
                 ! Check if vertex is vessel vertex 
                 if ((pol(i)%labels(pol(i)%vert(j), 1) > grid%vert%ntot)) then 

@@ -1533,7 +1533,8 @@ module goatmod_userinput
         allocate(options%refLBdecaylengthstructure(0), &
             options%refLBdecaylengthvert(0), options%refLBstructureIDs(0), &
             options%refLBvertIDs(0), options%refLBLminstructure(0), &
-            options%refLBLmaxstructure(0))
+            options%refLBLmaxstructure(0), options%refLBLminvert(0), &
+            options%refLBLmaxvert(0))
         
         ! Radial refinement options
         options%radrefmeth         = 'no'   
@@ -2628,10 +2629,45 @@ module goatmod_userinput
         call ExtractOptionValueReal1D(fid, field, options%refLBLmaxstructure)
         field  = 'gg.ref.LB.decaylengthstructure'
         call ExtractOptionValueReal1D(fid, field, options%refLBdecaylengthstructure)
+        field  = 'gg.ref.LB.Lminvert'
+        call ExtractOptionValueReal1D(fid, field, options%refLBLminvert)
+        field  = 'gg.ref.LB.Lmaxvert'
+        call ExtractOptionValueReal1D(fid, field, options%refLBLmaxvert)
+        field  = 'gg.ref.LB.decaylengthvert'
+        call ExtractOptionValueReal1D(fid, field, options%refLBdecaylengthvert)
         field  = 'gg.ref.LB.structureIDs'   
         call ExtractOptionValueInteger1D(fid, field, options%refLBstructureIDs)
         field  = 'gg.ref.LB.vertIDs'   
         call ExtractOptionValueInteger1D(fid, field, options%refLBvertIDs)
+
+        ! Every selected vessel structure or vertex requires a complete set
+        ! of refinement parameters. Mismatched arrays otherwise lead to
+        ! out-of-bounds access when the refinement distributions are built.
+        if (options%refLBdovessel) then
+            if (size(options%refLBstructureIDs) > 0) then
+                if ((size(options%refLBstructureIDs) /= &
+                    size(options%refLBLminstructure)) .or. &
+                    (size(options%refLBstructureIDs) /= &
+                    size(options%refLBLmaxstructure)) .or. &
+                    (size(options%refLBstructureIDs) /= &
+                    size(options%refLBdecaylengthstructure))) then
+                    call gdErrorHandler('ReadGGOptions: structureIDs, ' // &
+                        'Lminstructure, Lmaxstructure, and ' // &
+                        'decaylengthstructure must have equal sizes')
+                end if
+            end if
+            if (size(options%refLBvertIDs) > 0) then
+                if ((size(options%refLBvertIDs) /= &
+                    size(options%refLBLminvert)) .or. &
+                    (size(options%refLBvertIDs) /= &
+                    size(options%refLBLmaxvert)) .or. &
+                    (size(options%refLBvertIDs) /= &
+                    size(options%refLBdecaylengthvert))) then
+                    call gdErrorHandler('ReadGGOptions: vertIDs, Lminvert, ' // &
+                        'Lmaxvert, and decaylengthvert must have equal sizes')
+                end if
+            end if
+        end if
 
         ! Refinement options (radial)
         field = 'gg.radref.meth'

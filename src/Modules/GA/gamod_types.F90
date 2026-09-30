@@ -7839,7 +7839,7 @@ module gamod_types
                 end if
 
                 ! Add the cell
-                call grid%AddCell(new_faces, new_verts, regs(i), ic)
+                call grid%AddCell(new_faces, new_verts, regs(cvs(i)), ic)
 
                 ! Adjust centroid
                 call grid%CalcCentroidGA(c%ntot)
@@ -18526,6 +18526,7 @@ module gamod_types
             call f%vert1%Remove(facesU)
             call f%vert2%Remove(facesU)
             call f%label%Remove(facesU)
+            call f%reg%Remove(facesU)
             call f%aligned%Remove(facesU)
 
             do i = 1, nf
@@ -18695,6 +18696,7 @@ module gamod_types
                 call grid%face%vert1%Append(v1)
                 call grid%face%vert2%Append(v2)
                 call grid%face%label%Append(0)
+                call grid%face%reg%Append(0)
                 call grid%face%aligned%Append(0)
                 grid%face%ntot = face_num
 
@@ -18712,6 +18714,7 @@ module gamod_types
             call grid%face%vert1%Append(v1)
             call grid%face%vert2%Append(v2)
             call grid%face%label%Append(0)
+            call grid%face%reg%Append(0)
             call grid%face%aligned%Append(0)
             grid%face%ntot = face_num
 

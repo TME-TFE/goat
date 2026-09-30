@@ -16493,8 +16493,9 @@ module ggmod_gridgeneration2D
         ! Note 2: we don't account yet for empty flux surfaces - these 
         ! simply have zero faces/cells etc. Can be deleted later on
 
-        ! Note 3: cut cells etc should be correctly included as long as 
-        ! cells only have two boundary faces - otherwise they're not included
+        ! Note 3: for an open tube ending in a cell with multiple candidate
+        ! boundary faces, the face most aligned with the adjacent internal
+        ! poloidal face is used as the tube end face.
 
         ! Declare variables
         !==================
@@ -16511,13 +16512,15 @@ module ggmod_gridgeneration2D
         integer(I8), allocatable, dimension(:, :)   :: tfnb, tempf
         real(R8), allocatable, dimension(:)     :: vpsi, xf, yf, xc, yc, &
             ccx, ccy, bfx, bfy, dp
+        real(R8)                                :: refdx, refdy, canddx, &
+            canddy, refnorm, candnorm, alignment, bestalignment
         logical, allocatable, dimension(:)      :: temp, tf, &
             ispolygonstart, tc, isbranchingpolygon, hasbndf1, hasbndf2, &
             keepind
 
         ! Loop
         integer(I8)                             :: i, j, k, cc, ncell, &
-            nface
+            nface, ibest
 
         ! Initialize
         !===========
@@ -16788,11 +16791,38 @@ module ggmod_gridgeneration2D
                         ' is not closed but the starting cell (number: ', ftc(1), &
                         ' ) has no boundary faces. Not adding face'
                 elseif (size(tcf) > 1) then 
-                    ! Unexpected, may be an issue
-                    hasbndf1(i) = .false.
-                    print *, 'ComputeGridData: flux tube: ', i, &
-                        ' is not closed but the starting cell (number: ', ftc(1), &
-                        ' ) has multiple boundary faces. Not adding face'
+                    ! At a corner cell, select the boundary face whose
+                    ! tangent is most parallel to the adjacent internal
+                    ! poloidal face. BuildOpenTubesUS uses the same idea for
+                    ! target trapezoids, but with an unnormalized dot product;
+                    ! normalizing here keeps the choice independent of face
+                    ! length.
+                    refdx = v%x(f%vert(ftf(1), 2)) - v%x(f%vert(ftf(1), 1))
+                    refdy = v%y(f%vert(ftf(1), 2)) - v%y(f%vert(ftf(1), 1))
+                    refnorm = sqrt(refdx**2 + refdy**2)
+                    ibest = 0
+                    bestalignment = -1.0_R8
+                    do j = 1, size(tcf)
+                        canddx = v%x(f%vert(tcf(j), 2)) - v%x(f%vert(tcf(j), 1))
+                        canddy = v%y(f%vert(tcf(j), 2)) - v%y(f%vert(tcf(j), 1))
+                        candnorm = sqrt(canddx**2 + canddy**2)
+                        if ((refnorm > 0.0_R8) .and. (candnorm > 0.0_R8)) then
+                            alignment = abs(refdx*canddx + refdy*canddy) / &
+                                (refnorm*candnorm)
+                            if (alignment > bestalignment) then
+                                bestalignment = alignment
+                                ibest = j
+                            end if
+                        end if
+                    end do
+                    if (ibest > 0) then
+                        ftf = [tcf(ibest), ftf]
+                    else
+                        hasbndf1(i) = .false.
+                        print *, 'ComputeGridData: flux tube: ', i, &
+                            ' is not closed but the starting cell (number: ', ftc(1), &
+                            ' ) has only zero-length boundary faces. Not adding face'
+                    end if
                 end if 
 
                 ! Find boundary face(s) of last cell
@@ -16809,14 +16839,38 @@ module ggmod_gridgeneration2D
                     ! Unexpected, but not an issue
                     hasbndf2(i) = .false.
                     print *, 'ComputeGridData: flux tube: ', i, &
-                        ' is not closed but the ending cell (number: ', ftc(1), &
+                        ' is not closed but the ending cell (number: ', ftc(nftc), &
                         ' ) has no boundary faces. Not adding face'
                 elseif (size(tcf) > 1) then 
-                    ! Unexpected, may be an issue
-                    hasbndf2(i) = .false.
-                    print *, 'ComputeGridData: flux tube: ', i, &
-                        ' is not closed but the ending cell (number: ', ftc(1), &
-                        ' ) has multiple boundary faces. Not adding face'
+                    ! Apply the same corner-face selection at the other end.
+                    refdx = v%x(f%vert(ftf(size(ftf)), 2)) - &
+                        v%x(f%vert(ftf(size(ftf)), 1))
+                    refdy = v%y(f%vert(ftf(size(ftf)), 2)) - &
+                        v%y(f%vert(ftf(size(ftf)), 1))
+                    refnorm = sqrt(refdx**2 + refdy**2)
+                    ibest = 0
+                    bestalignment = -1.0_R8
+                    do j = 1, size(tcf)
+                        canddx = v%x(f%vert(tcf(j), 2)) - v%x(f%vert(tcf(j), 1))
+                        canddy = v%y(f%vert(tcf(j), 2)) - v%y(f%vert(tcf(j), 1))
+                        candnorm = sqrt(canddx**2 + canddy**2)
+                        if ((refnorm > 0.0_R8) .and. (candnorm > 0.0_R8)) then
+                            alignment = abs(refdx*canddx + refdy*canddy) / &
+                                (refnorm*candnorm)
+                            if (alignment > bestalignment) then
+                                bestalignment = alignment
+                                ibest = j
+                            end if
+                        end if
+                    end do
+                    if (ibest > 0) then
+                        ftf = [ftf, tcf(ibest)]
+                    else
+                        hasbndf2(i) = .false.
+                        print *, 'ComputeGridData: flux tube: ', i, &
+                            ' is not closed but the ending cell (number: ', ftc(nftc), &
+                            ' ) has only zero-length boundary faces. Not adding face'
+                    end if
                 end if 
             else 
                 ! Closed tube

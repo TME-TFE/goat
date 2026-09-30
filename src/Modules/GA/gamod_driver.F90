@@ -739,12 +739,22 @@ module gamod_driver
         trias_present = any(c%vertP(:,2) == 3)
         pents_present = any(c%vertP(:,2) == 5)
 
-        if (.not.options%rem_small_trias) then
+        if (.not.options%rem_small_trias .and. &
+            .not.options%stacked_to_cutcell) then
         
             print *, "Warning: Postprocessing: BuildFluxTube can not handle the" // & 
             & "presence of mini triangles as the face%aligned array is not correct"
 
         else 
+
+            ! Stacked-to-cutcell conversion invalidates the existing flux
+            ! tubes, so they are rebuilt even without small-triangle removal.
+            ! Mini triangles left in the grid can still affect the rebuild.
+            if (.not.options%rem_small_trias) then
+                print *, "Warning: Postprocessing: rebuilding flux tubes after " // &
+                & "stacked-to-cutcell conversion without small-triangle removal. " // &
+                & "Flux-tube data may be incomplete if mini triangles remain."
+            end if
 
             if (.not.trias_present .and. .not.pents_present) then
 

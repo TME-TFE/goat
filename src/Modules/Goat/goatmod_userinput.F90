@@ -1179,11 +1179,14 @@ module goatmod_userinput
         options%QTtype                              = 'regular'
         options%split_out                           = .false.
         options%splittype                           = 'rad'
+        options%splittype_array                     = [1]
         options%n_split                             = 20
         options%n_split_array                       = [20]
         options%typeT                               = 'cutcell'
         options%rad_type                            = 1
+        options%rad_type_array                      = [1]
         options%pol_type                            = 1
+        options%pol_type_array                      = [1]
         options%dist_function_threshold_split       = 0.9
         options%dist_function_threshold_split_wall  = 0.6  
         

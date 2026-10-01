@@ -7839,7 +7839,7 @@ module gamod_types
                 end if
 
                 ! Add the cell
-                call grid%AddCell(new_faces, new_verts, regs(i), ic)
+                call grid%AddCell(new_faces, new_verts, regs(cvs(i)), ic)
 
                 ! Adjust centroid
                 call grid%CalcCentroidGA(c%ntot)
@@ -7914,7 +7914,7 @@ module gamod_types
 
         ! Auxiliary
         integer(I8) :: i, v11, v12, v21, v22, nf, fcs, ifc, prev_cv, &
-            prev_face
+            prev_face, nrejected
         integer(I8), allocatable, dimension(:) :: cvsD, bfaces, cv, fcsD, &
             fcsD2, fcs3, fcs3_nal, cvs2, cvLookUp, indfc
         real(R8) :: fcs_b1, fcs_b2, r 
@@ -7932,6 +7932,7 @@ module gamod_types
         found = .false.
         allocate(cvsD(c%ntot))
         counter = 0
+        nrejected = 0
         cvLookUp = GetCvLookUpGA(c)
 
         ! Get boundary faces
@@ -7949,11 +7950,21 @@ module gamod_types
 
             ! Get boundary cells
             cv = GetFaceCellGA(c, ifc, cvLookUp)
+            if (size(cv) /= 1) cycle
 
             ! Continue if triangle
             nf = c%faceP2%Get(cv(1))
 
             do while (nf == 3) 
+
+                ! Reject cycles before storing the same cell a second time.
+                if (counter > 0) then
+                    if (any(cvsD(1:counter) == cv(1))) then
+                        counter = 0
+                        nrejected = nrejected + 1
+                        exit
+                    end if
+                end if
 
                 ! Store
                 counter = counter + 1
@@ -7965,9 +7976,20 @@ module gamod_types
 
                 ! Take new poloidal faces
                 fcsD = GetCellFaceGA(c, cv(1))
+                if (count(f%aligned%Get(fcsD) == 1) /= 1) then
+                    counter = 0
+                    nrejected = nrejected + 1
+                    exit
+                end if
                 log = ((fcsD /= prev_face) .and. [f%aligned%Get(fcsD)] == 0)
                 allocate(fcsD2(count(log)))
                 fcsD2 = pack(fcsD, log)
+                if (size(fcsD2) /= 1) then
+                    counter = 0
+                    nrejected = nrejected + 1
+                    deallocate(fcsD2)
+                    exit
+                end if
                 fcs = fcsD2(1)
 
                 ! Get next cell
@@ -7976,6 +7998,12 @@ module gamod_types
                     ! Get the next face
                     cvs2 = GetFaceCellGA(c, fcs, cvLookUp)
                     cv = pack(cvs2, cvs2 /= prev_cv)
+                    if (size(cv) /= 1) then
+                        counter = 0
+                        nrejected = nrejected + 1
+                        deallocate(fcsD2)
+                        exit
+                    end if
 
                     nf = c%faceP2%Get(cv(1))
 
@@ -8017,6 +8045,13 @@ module gamod_types
             end if
 
         end do
+
+        ! Report candidates skipped because of malformed or ambiguous
+        ! connectivity, so their absence from the conversion is visible.
+        if (nrejected > 0) then
+            print *, 'DetectStackedTrias: skipped ', nrejected, &
+                ' candidate chains with ambiguous or malformed connectivity'
+        end if
 
         ! Post-process
         if (counter .gt. 1) then
@@ -18526,6 +18561,7 @@ module gamod_types
             call f%vert1%Remove(facesU)
             call f%vert2%Remove(facesU)
             call f%label%Remove(facesU)
+            call f%reg%Remove(facesU)
             call f%aligned%Remove(facesU)
 
             do i = 1, nf
@@ -18695,6 +18731,7 @@ module gamod_types
                 call grid%face%vert1%Append(v1)
                 call grid%face%vert2%Append(v2)
                 call grid%face%label%Append(0)
+                call grid%face%reg%Append(0)
                 call grid%face%aligned%Append(0)
                 grid%face%ntot = face_num
 
@@ -18712,6 +18749,7 @@ module gamod_types
             call grid%face%vert1%Append(v1)
             call grid%face%vert2%Append(v2)
             call grid%face%label%Append(0)
+            call grid%face%reg%Append(0)
             call grid%face%aligned%Append(0)
             grid%face%ntot = face_num
 

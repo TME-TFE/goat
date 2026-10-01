@@ -2204,9 +2204,6 @@ module mod_contour2D
         ! saddle points
         qfc = 0
     
-        ! Set initial padding width
-        tnpq = npq 
-
         ! Set sizes
         nx = size(X)
         ny = size(Y)
@@ -2223,6 +2220,12 @@ module mod_contour2D
         ! Set up saddle point structure
         !==============================
         do i = 1, size(xs)
+
+            ! Padding may be enlarged below until this saddle is resolved.
+            ! Start every saddle from the configured width; otherwise one
+            ! difficult point enlarges the domains of all later points and
+            ! can create a spurious overlap that depends on point order.
+            tnpq = npq
 
             ! Determine saddle point location
             ixquad = findloc(xs(i) >= X, .true., dim=1, back=.true.)
@@ -2321,8 +2324,10 @@ module mod_contour2D
                     ! Mark for deletion
                     keepind(i) = .false. 
 
-                    ! Skip
-                    cycle 
+                    ! Leave the padding loop; the keepind check below skips
+                    ! this saddle point. A cycle here would restart the
+                    ! padding loop and reallocate arrays that are allocated.
+                    exit
                 end if
                 if (issaddle(i)) then 
                     if (m < 4) then 

@@ -193,11 +193,15 @@ module gamod_driver
         ! Correct face labels on for wide grid
         call grid%CheckFcLbl(options)
 
-        ! Identify farSOL cells
-        call grid%IdentifyfarSOLcells(options)
-
-        ! Check consistency of options
+        ! Check consistency of options before inspecting the option arrays
         call CheckGAoptions(options)
+
+        ! Construct the far-SOL selector only when an enabled adaptation
+        ! criterion actually consumes it. Unconditional construction makes
+        ! unrelated operations fail on otherwise valid general topologies.
+        if (UsesFarSOLCriteria(options)) then
+            call grid%IdentifyfarSOLcells(options)
+        end if
 
         ! Visualize starting grid
         call grid%WriteData('grid_before_GA')
@@ -207,6 +211,41 @@ module gamod_driver
 
 
     end subroutine
+
+    logical function UsesFarSOLCriteria(options) result(usesFarSOL)
+
+        ! Return whether any enabled splitting or merging pass requires the
+        ! far-SOL interpolant constructed by IdentifyfarSOLcells.
+
+        type(GAoptionsUDT), intent(in) :: options
+
+        integer(I8) :: i
+
+        usesFarSOL = .false.
+
+        do i = 1, size(options%merging_array)
+            if (options%merging_array(i) == 1 .and. &
+                options%merge_crit_array(i) == 8) then
+                usesFarSOL = .true.
+                return
+            end if
+        end do
+
+        do i = 1, size(options%splitting_array)
+            if (options%splitting_array(i) /= 1) cycle
+            if (options%splittype_array(i) == 1 .and. &
+                any(options%rad_type_array(i) == [5, 6])) then
+                usesFarSOL = .true.
+                return
+            end if
+            if (options%splittype_array(i) == 2 .and. &
+                any(options%pol_type_array(i) == [4, 5])) then
+                usesFarSOL = .true.
+                return
+            end if
+        end do
+
+    end function
 
     subroutine GAInternalDriver(grid,options,environment,magneticField)
 
@@ -700,12 +739,22 @@ module gamod_driver
         trias_present = any(c%vertP(:,2) == 3)
         pents_present = any(c%vertP(:,2) == 5)
 
-        if (.not.options%rem_small_trias) then
+        if (.not.options%rem_small_trias .and. &
+            .not.options%stacked_to_cutcell) then
         
             print *, "Warning: Postprocessing: BuildFluxTube can not handle the" // & 
             & "presence of mini triangles as the face%aligned array is not correct"
 
         else 
+
+            ! Stacked-to-cutcell conversion invalidates the existing flux
+            ! tubes, so they are rebuilt even without small-triangle removal.
+            ! Mini triangles left in the grid can still affect the rebuild.
+            if (.not.options%rem_small_trias) then
+                print *, "Warning: Postprocessing: rebuilding flux tubes after " // &
+                & "stacked-to-cutcell conversion without small-triangle removal. " // &
+                & "Flux-tube data may be incomplete if mini triangles remain."
+            end if
 
             if (.not.trias_present .and. .not.pents_present) then
 
@@ -791,7 +840,7 @@ module gamod_driver
         type(GAoptionsUDT), intent(inout) :: options
 
         ! Auxiliary
-        integer(I8) :: nl
+        integer(I8) :: nl, i
 
         ! BLG, first remove small triangles
         if (options%BLG) &
@@ -809,14 +858,30 @@ module gamod_driver
         ! Make sure split and merge arrays are the same size
         nl = size(options%merging_array)
         if ( nl /= size(options%splitting_array) &
+            .or. nl /= size(options%splittype_array) &
             .or. nl /= size(options%n_split_array) &
             .or. nl /= size(options%rad_type_array) &
             .or. nl /= size(options%pol_type_array) &
             .or. nl /= size(options%merge_crit_array) &
             .or. nl /= size(options%n_merge_array)) then
-                call gdErrorHandler('CheckGAoptions: make sure that ga.splitting, ' // &
-                & 'ga.merging, ga.n_split, ga.rad_type, ga.pol_type, ga.merge_crit, ga.n_merge')
+                call gdErrorHandler('CheckGAoptions: ga.splitting, ga.merging, ' // &
+                    'ga.splittype, ga.n_split, ga.rad_type, ga.pol_type, ' // &
+                    'ga.merge_crit, and ga.n_merge must have equal sizes')
         end if
+
+        ! Enabled splitting passes must name a split direction explicitly.
+        ! Other values would silently fall back to the default radial
+        ! direction and bypass the checks that depend on the split type.
+        do i = 1, nl
+            if (options%splitting_array(i) == 1 .and. &
+                options%splittype_array(i) /= 1 .and. &
+                options%splittype_array(i) /= 2) then
+                print *, 'CheckGAoptions: pass ', i, ' has ga.splittype = ', &
+                    options%splittype_array(i)
+                call gdErrorHandler('CheckGAoptions: ga.splittype must be ' // &
+                    '1 (radial) or 2 (poloidal) for every enabled splitting pass')
+            end if
+        end do
 
         ! Aposteriori
         if (options%meth == 'aposteriori' .and. .not.options%readstate) then

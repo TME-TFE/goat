@@ -954,6 +954,13 @@ module goatmod_userinput
         !                       structure labels (as specified in the   
         !                       input structure file) at which refinement
         !                       should be done 
+        ! - refLBp(x, y, d, Lmin, Lmax) Allows to specify distribution
+        !       functions for poloidal refinement at arbitrary points in
+        !       the domain (same points and decay lengths used for Lmin 
+        !       and Lmax, but Lmin/Lmax value may differ at points). 
+        !       Each point k is specified by coordinates x(k), y(k) and
+        !       decay length d(k) (desired Lmin(k), Lmax(k))
+        !                       
 
         
         ! - refBLncstructure    number
@@ -1022,7 +1029,8 @@ module goatmod_userinput
             vdpdval, refLBLminstructure, refLBLminvert, refLBLmaxstructure, &
             refLBLmaxvert, refLBdecaylengthstructure, refLBdecaylengthvert, &
             refBLdltarget, refBLdlvessel, radrefBLdlsp, vdrdx, vdrdy, &
-            vdrdd, vdrdval, refBLdlstructure
+            vdrdd, vdrdval, refBLdlstructure, refLBpx, refLBpy, refLBpd, &
+            refLBpLmin, refLBpLmax 
         character(:), allocatable   :: vdptype, vdpdtype, vdrtype, &
             vdrdtype, rembndtriacriterion, remfacescriterion, ggmethod, &
             cellconstructionmethod, TMcellgriddingorder, refmeth, vdpplftype, &
@@ -1534,6 +1542,8 @@ module goatmod_userinput
             options%refLBdecaylengthvert(0), options%refLBstructureIDs(0), &
             options%refLBvertIDs(0), options%refLBLminstructure(0), &
             options%refLBLmaxstructure(0))
+        allocate(options%refLBpx(0), options%refLBpy(0), options%refLBpd(0), &
+            options%refLBpLmin(0), options%refLBpLmax(0))
         
         ! Radial refinement options
         options%radrefmeth         = 'no'   
@@ -2633,6 +2643,17 @@ module goatmod_userinput
         field  = 'gg.ref.LB.vertIDs'   
         call ExtractOptionValueInteger1D(fid, field, options%refLBvertIDs)
 
+        field  = 'gg.ref.LB.points.x'
+        call ExtractOptionValueReal1D(fid, field, options%refLBpx)
+        field  = 'gg.ref.LB.points.y'
+        call ExtractOptionValueReal1D(fid, field, options%refLBpy)
+        field  = 'gg.ref.LB.points.d'
+        call ExtractOptionValueReal1D(fid, field, options%refLBpd)
+        field  = 'gg.ref.LB.points.Lmin'
+        call ExtractOptionValueReal1D(fid, field, options%refLBpLmin)
+        field  = 'gg.ref.LB.points.Lmax'
+        call ExtractOptionValueReal1D(fid, field, options%refLBpLmax)
+        
         ! Refinement options (radial)
         field = 'gg.radref.meth'
         call ExtractOptionValueCharacter(fid, field, options%radrefmeth) 

@@ -14004,11 +14004,14 @@ module ggmod_gridgeneration2D
                     end do
 
                     ! Include
-                    xp = [xp, pack(xv, includevesselvertex)]
-                    yp = [yp, pack(yv, includevesselvertex)]
-                    valpLmin = [valpLmin, pack(tempLmin, includevesselvertex)]
-                    valpLmax = [valpLmax, pack(tempLmax, includevesselvertex)]
-                    decaylength = [decaylength, pack(tempdecaylength, includevesselvertex)]                    
+                    xp = [xp, pack(xv, includevesselvertex), options%refLBpx]
+                    yp = [yp, pack(yv, includevesselvertex), options%refLBpy]
+                    valpLmin = [valpLmin, pack(tempLmin, includevesselvertex), &
+                        options%refLBpLmin]
+                    valpLmax = [valpLmax, pack(tempLmax, includevesselvertex), &
+                        options%refLBpLmax]
+                    decaylength = [decaylength, pack(tempdecaylength, includevesselvertex), &
+                        options%refLBpd]                    
 
                 end if 
 

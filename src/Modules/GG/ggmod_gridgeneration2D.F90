@@ -19642,9 +19642,17 @@ module ggmod_gridgeneration2D
         ! These labels will be added in the void polygon on positions 
         ! 2, 3, 4, 5 eventually (1 holds the original vertex ID if it is 
         ! a grid vertex, non-grid vertices temporarily hold their ID)
+        ! Note: if no labels are given, elements etc are not written out
+
 
         allocate(voidlabels(vert%ntot+size(plfv%xp), 4))
         voidlabels = 0
+        call plfel%ps%GetLabels(templabels)
+        if (all(templabels == 0)) then 
+            print *, 'ComputeVoidRegionPolygonSet: all element labels ' // & 
+                'are zero. This is expected when starting from structure.dat ' // &
+                'files - the polygon cannot be mapped to elements then.'
+        else
         call plfel%EvaluateLabel([vert%x, plfv%xp], [vert%y, plfv%yp], &
             templabels, edgeIDopt=edgeID, vertIDopt=vertID) ! in element plf, only three labels present, no vertex ID - to be added later
         do i = 2, 3
@@ -19708,6 +19716,7 @@ module ggmod_gridgeneration2D
 
         ! Set 'corner' vertices
         voidlabels(splitvertID, 1) = 1
+        end if 
 
         ! Construct the void polygon set
         call voidps%Construct(voidedgevID, [vert%x, plfv%xp], [vert%y, plfv%yp], &

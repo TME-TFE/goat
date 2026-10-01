@@ -2324,8 +2324,10 @@ module mod_contour2D
                     ! Mark for deletion
                     keepind(i) = .false. 
 
-                    ! Skip
-                    cycle 
+                    ! Leave the padding loop; the keepind check below skips
+                    ! this saddle point. A cycle here would restart the
+                    ! padding loop and reallocate arrays that are allocated.
+                    exit
                 end if
                 if (issaddle(i)) then 
                     if (m < 4) then 

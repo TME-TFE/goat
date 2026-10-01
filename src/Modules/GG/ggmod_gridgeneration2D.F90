@@ -5351,7 +5351,8 @@ module ggmod_gridgeneration2D
         ! Auxiliary
         integer(I8)                             :: &
             tf, cind, nc, ntf, incr, nv, temp, &
-            startind, endind, nfs, tfloc, tfc, nthf, ntlf, edgeID
+            startind, endind, nfs, tfloc, tfc, nthf, ntlf, edgeID, &
+            indnormal
         integer(I8), allocatable, dimension(:)  :: tubec, tubef, &
             allIDs, s1, s2, polv, fsID, sortind, thf, tlf, tvertexID, &
             tf1, tf2, allnbtf, contourind, tv1, tv2
@@ -5367,7 +5368,7 @@ module ggmod_gridgeneration2D
         real(R8), allocatable, dimension(:, :)  :: segrrf, segrc, &
             xint, yint
         logical                                 :: isflremoved_nointersect, &
-            isintersectremoved, issrf, doflip, changesign, &
+            isintersectremoved, issrf, changesign, &
             isflremoved_multipleintersect, doremoval
         logical, allocatable, dimension(:)      :: &
             iscontourfound, keepind, isdescending
@@ -5579,7 +5580,6 @@ module ggmod_gridgeneration2D
             if (celldata(tfc)%srf == tf) then 
                 issrf = .true.
             end if 
-            doflip = .false.
             changesign = .false.
             if (nthf > 0) then 
                 ! Check with high field face (should be first or last face)
@@ -5592,60 +5592,56 @@ module ggmod_gridgeneration2D
                     !'not yet verified'
                     txf = (hf1%xl(2) - hf1%xl(1))
                     tyf = (hf1%yl(2) - hf1%yl(1))
+                    indnormal = 1
                 elseif (topomesh%face%vert(thf(1), 1) == topomesh%face%vert(tf, 2)) then
                     ! Take first edge of high field line, flip 
                     !print *, 'AddTopologicalMeshCellGriddingData: code part ' // & 
                     !'not yet verified'
                     txf = (hf1%xl(2) - hf1%xl(1))
                     tyf = (hf1%yl(2) - hf1%yl(1))
-                    nxf = nxf(size(nxf):1:-1) 
-                    nyf = nyf(size(nyf):1:-1) 
-                    doflip = .true.
+                    indnormal = size(nxf)
                 elseif (topomesh%face%vert(thf(1), 2) == topomesh%face%vert(tf, 1)) then
                     ! Take last edge of high field line
                     !print *, 'AddTopologicalMeshCellGriddingData: code part ' // & 
                     !'not yet verified'
                     txf = (hf1%xl(hf1%nl-1) - hf1%xl(hf1%nl))
                     tyf = (hf1%yl(hf1%nl-1) - hf1%yl(hf1%nl))
+                    indnormal = 1
                 elseif (topomesh%face%vert(thf(1), 2) == topomesh%face%vert(tf, 2)) then
                     ! Take last edge of high field line, flipe
                     !print *, 'AddTopologicalMeshCellGriddingData: code part ' // & 
                     !'not yet verified'
                     txf = (hf1%xl(hf1%nl-1) - hf1%xl(hf1%nl))
                     tyf = (hf1%yl(hf1%nl-1) - hf1%yl(hf1%nl))
-                    nxf = nxf(size(nxf):1:-1) 
-                    nyf = nyf(size(nyf):1:-1) 
-                    doflip = .true.
+                    indnormal = size(nxf)
                 elseif (topomesh%face%vert(thf(nthf), 1) == topomesh%face%vert(tf, 1)) then 
                     ! Take first edge of high field line
                     !print *, 'AddTopologicalMeshCellGriddingData: code part ' // & 
                     !'not yet verified'
                     txf = (hf2%xl(2) - hf2%xl(1))
                     tyf = (hf2%yl(2) - hf2%yl(1))
+                    indnormal = 1
                 elseif (topomesh%face%vert(thf(nthf), 1) == topomesh%face%vert(tf, 2)) then
                     ! Take first edge of high field line, flip 
                     !print *, 'AddTopologicalMeshCellGriddingData: code part ' // & 
                     !'not yet verified'
                     txf = (hf2%xl(2) - hf2%xl(1))
                     tyf = (hf2%yl(2) - hf2%yl(1))
-                    nxf = nxf(size(nxf):1:-1) 
-                    nyf = nyf(size(nyf):1:-1) 
-                    doflip = .true.
+                    indnormal = size(nxf)
                 elseif (topomesh%face%vert(thf(nthf), 2) == topomesh%face%vert(tf, 1)) then
                     ! Take last edge of high field line
                     !print *, 'AddTopologicalMeshCellGriddingData: code part ' // & 
                     !'not yet verified'
                     txf = (hf2%xl(hf2%nl-1) - hf2%xl(hf2%nl))
                     tyf = (hf2%yl(hf2%nl-1) - hf2%yl(hf2%nl))
+                    indnormal = 1
                 elseif (topomesh%face%vert(thf(nthf), 2) == topomesh%face%vert(tf, 2)) then
                     ! Take last edge of high field line, flip
                     !print *, 'AddTopologicalMeshCellGriddingData: code part ' // & 
                     !'not yet verified'
                     txf = (hf2%xl(hf2%nl-1) - hf2%xl(hf2%nl))
                     tyf = (hf2%yl(hf2%nl-1) - hf2%yl(hf2%nl))
-                    nxf = nxf(size(nxf):1:-1) 
-                    nyf = nyf(size(nyf):1:-1) 
-                    doflip = .true.
+                    indnormal = size(nxf)
                 else
                     ! No correspondence between vertices found, throw error
                     call gdErrorHandler('AddTopologicalMeshCellGriddingData: ' // & 
@@ -5660,7 +5656,7 @@ module ggmod_gridgeneration2D
                 ntxf = sqrt(txf**2 + tyf**2)
                 txf = txf/ntxf 
                 tyf = tyf/ntxf
-                if ((nxf(1)*txf + nyf(1)*tyf) < 0.0_R8) then 
+                if ((nxf(indnormal)*txf + nyf(indnormal)*tyf) < 0.0_R8) then 
                     nxf = -nxf 
                     nyf = -nyf 
                     changesign = .true.
@@ -5678,60 +5674,56 @@ module ggmod_gridgeneration2D
                     !'not yet verified'
                     txf = (lf1%xl(2) - lf1%xl(1))
                     tyf = (lf1%yl(2) - lf1%yl(1))
+                    indnormal = size(nxf)
                 elseif (topomesh%face%vert(tlf(1), 1) == topomesh%face%vert(tf, 1)) then
                     ! Take first edge of high field line, flip 
                     !print *, 'AddTopologicalMeshCellGriddingData: code part ' // & 
                     !'not yet verified'
                     txf = (lf1%xl(2) - lf1%xl(1))
                     tyf = (lf1%yl(2) - lf1%yl(1))
-                    nxf = nxf(size(nxf):1:-1) 
-                    nyf = nyf(size(nyf):1:-1) 
-                    doflip = .true.
+                    indnormal = 1
                 elseif (topomesh%face%vert(tlf(1), 2) == topomesh%face%vert(tf, 2)) then
                     ! Take last edge of high field line
                     !print *, 'AddTopologicalMeshCellGriddingData: code part ' // & 
                     !'not yet verified'
                     txf = (lf1%xl(lf1%nl-1) - lf1%xl(lf1%nl))
                     tyf = (lf1%yl(lf1%nl-1) - lf1%yl(lf1%nl))
+                    indnormal = size(nxf)
                 elseif (topomesh%face%vert(tlf(1), 2) == topomesh%face%vert(tf, 1)) then
                     ! Take last edge of high field line, flipe
                     !print *, 'AddTopologicalMeshCellGriddingData: code part ' // & 
                     !'not yet verified'
                     txf = (lf1%xl(lf1%nl-1) - lf1%xl(lf1%nl))
                     tyf = (lf1%yl(lf1%nl-1) - lf1%yl(lf1%nl))
-                    nxf = nxf(size(nxf):1:-1) 
-                    nyf = nyf(size(nyf):1:-1) 
-                    doflip = .true.
+                    indnormal = 1
                 elseif (topomesh%face%vert(tlf(ntlf), 1) == topomesh%face%vert(tf, 2)) then 
                     ! Take first edge of high field line
                     !print *, 'AddTopologicalMeshCellGriddingData: code part ' // & 
                     !'not yet verified'
                     txf = (lf2%xl(2) - lf2%xl(1))
                     tyf = (lf2%yl(2) - lf2%yl(1))
+                    indnormal = size(nxf)
                 elseif (topomesh%face%vert(tlf(ntlf), 1) == topomesh%face%vert(tf, 1)) then
                     ! Take first edge of high field line, flip 
                     !print *, 'AddTopologicalMeshCellGriddingData: code part ' // & 
                     !'not yet verified'
                     txf = (lf2%xl(2) - lf2%xl(1))
                     tyf = (lf2%yl(2) - lf2%yl(1))
-                    nxf = nxf(size(nxf):1:-1) 
-                    nyf = nyf(size(nyf):1:-1) 
-                    doflip = .true.
+                    indnormal = 1
                 elseif (topomesh%face%vert(tlf(ntlf), 2) == topomesh%face%vert(tf, 2)) then
                     ! Take last edge of high field line
                     !print *, 'AddTopologicalMeshCellGriddingData: code part ' // & 
                     !'not yet verified'
                     txf = (lf2%xl(lf2%nl-1) - lf2%xl(lf2%nl))
                     tyf = (lf2%yl(lf2%nl-1) - lf2%yl(lf2%nl))
+                    indnormal = size(nxf)
                 elseif (topomesh%face%vert(tlf(ntlf), 2) == topomesh%face%vert(tf, 1)) then
                     ! Take last edge of high field line, flip
                     !print *, 'AddTopologicalMeshCellGriddingData: code part ' // & 
                     !'not yet verified'
                     txf = (lf2%xl(lf2%nl-1) - lf2%xl(lf2%nl))
                     tyf = (lf2%yl(lf2%nl-1) - lf2%yl(lf2%nl))
-                    nxf = nxf(size(nxf):1:-1) 
-                    nyf = nyf(size(nyf):1:-1) 
-                    doflip = .true.
+                    indnormal = 1
                 else
                     ! No correspondence between vertices found, throw error
                     call gdErrorHandler('AddTopologicalMeshCellGriddingData: ' // & 
@@ -5746,7 +5738,7 @@ module ggmod_gridgeneration2D
                 ntxf = sqrt(txf**2 + tyf**2)
                 txf = txf/ntxf 
                 tyf = tyf/ntxf
-                if ((nxf(size(nxf))*txf + nyf(size(nyf))*tyf) < 0.0_R8) then 
+                if ((nxf(indnormal)*txf + nyf(indnormal)*tyf) < 0.0_R8) then 
                     nxf = -nxf 
                     nyf = -nyf 
                     changesign = .true.
@@ -19653,69 +19645,69 @@ module ggmod_gridgeneration2D
                 'are zero. This is expected when starting from structure.dat ' // &
                 'files - the polygon cannot be mapped to elements then.'
         else
-        call plfel%EvaluateLabel([vert%x, plfv%xp], [vert%y, plfv%yp], &
-            templabels, edgeIDopt=edgeID, vertIDopt=vertID) ! in element plf, only three labels present, no vertex ID - to be added later
-        do i = 2, 3
-            voidlabels(:, i) = templabels(:, i)
-        end do 
+            call plfel%EvaluateLabel([vert%x, plfv%xp], [vert%y, plfv%yp], &
+                templabels, edgeIDopt=edgeID, vertIDopt=vertID) ! in element plf, only three labels present, no vertex ID - to be added later
+            do i = 2, 3
+                voidlabels(:, i) = templabels(:, i)
+            end do 
 
-        ! Adjust when vertices lie on an edge
-        do i = 1, vert%ntot 
-            if (edgeID(i) /= 0) then 
-                ! Check labels 2 and 3 of the vertices of the edge - these
-                ! should give the element ID
-                tv1 = plfel%vp1(edgeID(i))
-                tv2 = plfel%vp2(edgeID(i))
-                labelsv1 = plfel%vertlabel(tv1, 2:3)
-                labelsv2 = plfel%vertlabel(tv2, 2:3)
+            ! Adjust when vertices lie on an edge
+            do i = 1, vert%ntot 
+                if (edgeID(i) /= 0) then 
+                    ! Check labels 2 and 3 of the vertices of the edge - these
+                    ! should give the element ID
+                    tv1 = plfel%vp1(edgeID(i))
+                    tv2 = plfel%vp2(edgeID(i))
+                    labelsv1 = plfel%vertlabel(tv1, 2:3)
+                    labelsv2 = plfel%vertlabel(tv2, 2:3)
 
-                ! Get common, non-zero labels
-                labelse = GetCommonElements(labelsv1, labelsv2)
-                labelse = pack(labelse, labelse /= 0)
+                    ! Get common, non-zero labels
+                    labelse = GetCommonElements(labelsv1, labelsv2)
+                    labelse = pack(labelse, labelse /= 0)
 
-                ! Check
-                if (all(labelsv1 == 0) .and. all(labelsv2 == 0)) then 
-                    ! Probably no elID given, just set to zero 
-                    voidlabels(i, 2) = 0
-                    voidlabels(i, 3) = 0
-                    voidlabels(i, 4) = 0
-                elseif ((size(labelse) == 0) .or. (size(labelse) >= 2)) then 
-                    ! Weird - there should be elements
-                    call gdErrorHandler('ComputeVoidRegionPolygonSet: ' // & 
-                        'could not determine void label of grid vertex')
-                else
-                    ! Vertex lies on this edge only
-                    voidlabels(i, 2) = labelse(1)
-                    voidlabels(i, 3) = 0
-                    voidlabels(i, 4) = 0
+                    ! Check
+                    if (all(labelsv1 == 0) .and. all(labelsv2 == 0)) then 
+                        ! Probably no elID given, just set to zero 
+                        voidlabels(i, 2) = 0
+                        voidlabels(i, 3) = 0
+                        voidlabels(i, 4) = 0
+                    elseif ((size(labelse) == 0) .or. (size(labelse) >= 2)) then 
+                        ! Weird - there should be elements
+                        call gdErrorHandler('ComputeVoidRegionPolygonSet: ' // & 
+                            'could not determine void label of grid vertex')
+                    else
+                        ! Vertex lies on this edge only
+                        voidlabels(i, 2) = labelse(1)
+                        voidlabels(i, 3) = 0
+                        voidlabels(i, 4) = 0
+                    end if
+                elseif (vertID(i) /= 0) then 
+                    ! Voidlabels already correctly set, normally speaking
+                    voidlabels(i, 4) = 0 ! Still zero, because grid vertex
                 end if
-            elseif (vertID(i) /= 0) then 
-                ! Voidlabels already correctly set, normally speaking
-                voidlabels(i, 4) = 0 ! Still zero, because grid vertex
-            end if
-        end do
+            end do
 
-        ! Set labels of non-grid vertices
-        do i = vert%ntot+1, size(templabels, 1)
-            if (vertID(i) /= 0) then 
-                ! Should be accurate
-                voidlabels(i, 4) = vertID(i)
-            elseif (edgeID(i) /= 0) then 
-                ! This shouldn't happen, throw warning (grid is still
-                ! usable, void polygon perhaps after tuning)
-                print *, 'WARNING: ComputeVoidRegionPolygonSet: ' // &
-                    'void vertex could not be found, resulting void ' // &
-                    'polygon may not be determined correctly!'
-            else
-                ! Shouldn't happen
-                call gdErrorHandler('ComputeVoidRegionPolygonSet: ' // & 
-                    'point lies neither on an edge or vertex of the ' // & 
-                    'polygon, this is likely a bug')
-            end if 
-        end do 
+            ! Set labels of non-grid vertices
+            do i = vert%ntot+1, size(templabels, 1)
+                if (vertID(i) /= 0) then 
+                    ! Should be accurate
+                    voidlabels(i, 4) = vertID(i)
+                elseif (edgeID(i) /= 0) then 
+                    ! This shouldn't happen, throw warning (grid is still
+                    ! usable, void polygon perhaps after tuning)
+                    print *, 'WARNING: ComputeVoidRegionPolygonSet: ' // &
+                        'void vertex could not be found, resulting void ' // &
+                        'polygon may not be determined correctly!'
+                else
+                    ! Shouldn't happen
+                    call gdErrorHandler('ComputeVoidRegionPolygonSet: ' // & 
+                        'point lies neither on an edge or vertex of the ' // & 
+                        'polygon, this is likely a bug')
+                end if 
+            end do 
 
-        ! Set 'corner' vertices
-        voidlabels(splitvertID, 1) = 1
+            ! Set 'corner' vertices
+            voidlabels(splitvertID, 1) = 1
         end if 
 
         ! Construct the void polygon set

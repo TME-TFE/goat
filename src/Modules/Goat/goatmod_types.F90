@@ -1084,7 +1084,7 @@ module goatmod_types
             call ReadSingleLine(filespec, chardummy, reachedeof) ! header
             do i = 1, grid%data%ndiv
                 ! Read
-                read(filespec, *) grid%data%divFcP(i, 1), &
+                read(filespec, *) idum(0), grid%data%divFcP(i, 1), &
                     grid%data%divFcP(i, 2)
             end do
 
@@ -1643,7 +1643,7 @@ module goatmod_types
             call ReadSingleLine(filespec, chardummy2, reachedeof) ! header
             do i = 1, grid%data%ndiv
                 ! Read
-                read(filespec, *) grid%data%divFcP(i, 1), &
+                read(filespec, *) idum(0), grid%data%divFcP(i, 1), &
                     grid%data%divFcP(i, 2)
             end do
 
@@ -2301,7 +2301,7 @@ module goatmod_types
             end do
 
             ! Divertor target data
-            tempstring  = '*cf: divFcP1 divFcP2'
+            tempstring  = '*cf: div divFcP(:,1) divFcP(:,2)'
             write(fu, '(a)' ) tempstring
             do i = 1, nDiv
                 fmt = '(3'//Ifm//')'

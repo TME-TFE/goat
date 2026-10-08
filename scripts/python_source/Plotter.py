@@ -20,7 +20,7 @@ filesep = '/' # file separator
 
 # Data
 #-----
-GUARD_CELL_WIDTH = 0.1 # width of guard cell for plotting
+GUARD_CELL_WIDTH = 0.001 # width of guard cell for plotting
 
 # Enable gui events
 #------------------
@@ -2307,6 +2307,13 @@ def PlotCellBasedQuantity2D(grid, val, fignum, bounds=[-np.inf, np.inf], doguard
                 # Add vertex coordinates
                 verts.append(list(zip(tx, ty)))
 
+        if doguardcells:
+            bounds[0] = np.min(val)
+            bounds[1] = np.max(val)
+        else:
+            bounds[0] = np.min(val[0:grid.cell.nci])
+            bounds[1] = np.max(val[0:grid.cell.nci])
+
         
 
     else:
@@ -2316,6 +2323,8 @@ def PlotCellBasedQuantity2D(grid, val, fignum, bounds=[-np.inf, np.inf], doguard
             
             verts.append(list(zip(grid.vert.x[tv], grid.vert.y[tv])))
 
+
+    
     # Make patchplot
     thisval = copy.deepcopy(val)
     thisval = np.where(thisval > bounds[1], np.repeat(bounds[1], len(val), 0), thisval)
@@ -2324,6 +2333,61 @@ def PlotCellBasedQuantity2D(grid, val, fignum, bounds=[-np.inf, np.inf], doguard
 
     # Set axes
     SetAxesLimits2D(plt.gca(), grid.cell.x, grid.cell.y)
+
+def PlotFaceBasedQuantity2D(grid, val, fignum, bounds=[-np.inf, np.inf]):
+    # Description
+    #------------
+    # Make a patchplot of a scalar face based quantity. For each face, a 
+    # plotting 'cell' is constructed, based on the face cell neighbours.
+    # The coordinates are then: [nb1, v1, nb2, v2] if it is an internal 
+    # cell, otherwise it is [nb1, v1, v2] 
+
+    # Plot grid faces 
+    PlotGridFaces(grid, fignum)
+
+    # Check
+    if (len(val) != grid.face.ntot):
+        raise ValueError('PlotFaceBasedQuantity2D: ' \
+            'value length is not equal to number of grid faces')
+        
+    # Construct cell polygon collection
+    verts = []
+    for i in np.arange(0, grid.face.ntot):
+        # Check
+        if grid.face.nb1[i] == 0:
+            raise ValueError('PlotFaceBasedQuantity2D: face without first neighbour detected, unexpected')
+
+        # Add coordinates
+        if grid.face.nb2[i] == 0:
+            tc1 = grid.face.nb1[i]
+            tv1 = grid.face.v1[i]
+            tv2 = grid.face.v2[i]
+            tx = [grid.cell.x[tc1-1], grid.vert.x[tv1-1], grid.vert.x[tv2-1]]
+            ty = [grid.cell.y[tc1-1], grid.vert.y[tv1-1], grid.vert.y[tv2-1]]
+        else:
+            tc1 = grid.face.nb1[i]
+            tv1 = grid.face.v1[i]
+            tc2 = grid.face.nb2[i]
+            tv2 = grid.face.v2[i]
+            tx = [grid.cell.x[tc1-1], grid.vert.x[tv1-1], grid.cell.x[tc2-1], grid.vert.x[tv2-1]]
+            ty = [grid.cell.y[tc1-1], grid.vert.y[tv1-1], grid.cell.y[tc2-1], grid.vert.y[tv2-1]]
+
+        verts.append(list(zip(tx, ty)))
+
+    
+        bounds[0] = np.min(val[0:grid.face.ntot])
+        bounds[1] = np.max(val[0:grid.face.ntot])
+
+    
+    # Make patchplot
+    thisval = copy.deepcopy(val)
+    thisval = np.where(thisval > bounds[1], np.repeat(bounds[1], len(val), 0), thisval)
+    thisval = np.where(thisval < bounds[0], np.repeat(bounds[0], len(val), 0), thisval)
+    PlotGeneral2DPatch(verts, thisval, fignum)
+
+    # Set axes
+    SetAxesLimits2D(plt.gca(), grid.cell.x, grid.cell.y)
+
 
 def PlotVertBasedQuantity2D(grid, val, fignum):
 

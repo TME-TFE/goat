@@ -2615,7 +2615,7 @@ def ReadRZPsiFromEqdskFile(filepath):
         i = i + 1
 
     # Divide by 2*Pi
-    Psi = Psi/(2.0*np.pi)
+    # Psi = Psi/(2.0*np.pi)
 
     # Return
     return R, Z, Psi

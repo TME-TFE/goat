@@ -16899,9 +16899,15 @@ module ggmod_gridgeneration2D
 
                 ! Get faces
                 tcf = GetCellFace(c, i)
-                tcf = pack(tcf, f%BF(tcf))
+                tcf = pack(tcf, f%BF(tcf) .and. (.not. (f%aligned(tcf) == 1)))
                 
                 ! Add
+                if (size(tcf) > 2) then 
+                    ! can happen in exceptional cases
+                    print *,'ComputeGridData: more than 2 boundary faces ' // & 
+                        'detected for single cell tube, taking first two for tube...'
+                    tcf = tcf(1:2)
+                end if 
                 fd%fluxtubefaces(nface+1:nface+2) = tcf 
                 fd%fluxtubefacesP(cc, 2) = 2
                 if (cc < fd%nFt) then 

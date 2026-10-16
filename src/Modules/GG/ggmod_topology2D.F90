@@ -423,10 +423,11 @@ module ggmod_topology2D
             yps, xg, yg, Vf, xgv, ygv
         real(R8), parameter                     :: emptyR8(0)= 0
         real(R8), allocatable, dimension(:)     :: xtp, ytp, Ftp, &
-            xe, ye, fe
+            xe, ye, fe, Vv
         integer(I8)                             :: nv, ntp 
         integer(I8), allocatable, dimension(:)  :: typee, IDs
         integer(I8), parameter                  :: emptyI8(0) = 0
+        logical, allocatable, dimension(:)      :: outbnd
         type(VesselUDT)                         :: newvessel
 
         ! Loop
@@ -459,6 +460,14 @@ module ggmod_topology2D
         call TraceExtrema2D(xe, ye, fe, typee, fieldtracer, magneticField, &
             options%fdonewton)
 
+        ! Take only those that lie inside the vessel (otherwise spurious refinement may occur)
+        allocate(Vv(size(xe)))
+        call vessel%plfvessel%Evaluate(xe, ye, 0, 0, Vv)
+        outbnd = Vv >= 0
+        xe = pack(xe, .not. outbnd)
+        ye = pack(ye, .not. outbnd)
+        deallocate(Vv)
+
         ! Add extrema & related boundaries
         !=================================
         ! Tangency points & vessel geometry
@@ -470,7 +479,7 @@ module ggmod_topology2D
             call WriteTopologicalMesh(topomesh, 'topomesh_aftertp', .false.)
         end if 
 
-        ! Construct refined grid based on tangency points and extrema
+        ! Construct refined grid based on tangency points and extrema 
         ntp = count((topomesh%vert%type == TMvertextp1ID) .or. (topomesh%vert%type == TMvertextp2ID))
         allocate(xtp(ntp), ytp(ntp), Ftp(ntp), IDs(ntp))
         xtp = pack(topomesh%vert%x, &

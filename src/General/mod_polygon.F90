@@ -919,16 +919,17 @@ module mod_polygon
             polygonlevels
 
         ! Auxiliary
-        integer(I8)                 :: orientation, nv
+        integer(I8)                 :: orientation, nv, ind, indp1, indp2
 
         real(R8), allocatable       :: polygonarea(:), ipx(:), ipy(:), &
             yf(:), dx(:), jpx(:), jpy(:)   
 
+        logical                     :: ispointintersection
         logical, allocatable        :: inpolygonmatrix(:, :), jini(:), &
             iinj(:), ispolygonfound(:), doflip(:), dopolyg(:)
 
         ! Loop
-        integer(I8)                 :: i, j 
+        integer(I8)                 :: i, j, k
 
         ! Initialize
         !===========
@@ -1012,27 +1013,15 @@ module mod_polygon
                 allocate(jpx(nvj), jpy(nvj))
 
                 ! Get next polygon coordinates
-                jpx = p(j)%x
-                jpy = p(j)%y
+                jpx = p(j)%x(p(j)%vert) 
+                jpy = p(j)%y(p(j)%vert) 
 
                 ! Check if in polygon
                 call p(i)%inpolygon(jpx, jpy, jini)
                 call p(j)%inpolygon(ipx, ipy, iinj)
 
                 ! Sanity checks
-                if ((.not. all(jini) .and. (.not. all(.not. jini))) .or. &
-                     (.not. all(iinj) .and. (.not. all(.not. iinj))) ) then 
-                    ! Some polygons are only partly in another polygon. This would
-                    ! indicate intersections between closed polygons, which is not
-                    ! supported (and should in fact already be flagged above).
-                    ! Call warning handler and exit
-                    call PolygonWarningHandler(&
-                        'OrientNestedClosedPolygons: when sorting ' // &
-                        ' polygons, some polygons seem to ' // &
-                        'intersect. Returning...')
-                    flag = 2
-                    return 
-                end if
+                ispointintersection = .false. 
                 if (all(jini) .and. all(iinj)) then 
                     ! Coinciding polygons - also not supported
                     call PolygonWarningHandler(&
@@ -1042,12 +1031,77 @@ module mod_polygon
                     flag = 3
                     return 
                 end if
+                if ((.not. all(jini) .and. (.not. all(.not. jini))) .or. &
+                     (.not. all(iinj) .and. (.not. all(.not. iinj))) ) then 
+                    ! Some polygons are only partly in another polygon. 
+                    ! Need to do additional checks, since polygons 
+                    ! touching in one point would be possible to orient,
+                    ! but not polygons that are actually intersecting
+                    ! in (at least two) edges are not (one intersection
+                    ! in an edge should be impossible since both
+                    ! polygons are closed). Note: if the intersection
+                    ! is exactly in a point, then the inpolygon routine
+                    ! may have failed and output of jini/iinj may be 
+                    ! inconsistent...
+                    
+                    indp1 = 0 
+                    indp2 = 0
+                    ind = 0
+                    if (count(jini(1:p(j)%ne)) == 1) then  ! skip end point: is the same as start point because closed polygon
+                        ind = p(j)%vert(findloc(jini, .true., dim=1))
+                        indp1 = i
+                        indp2 = j 
+                    elseif (count(.not. jini(1:p(j)%ne)) == 1) then
+                        ind = p(j)%vert(findloc(.not. jini, .true., dim=1))
+                        indp1 = i
+                        indp2 = j 
+                    elseif (count(iinj(1:p(i)%ne)) == 1) then
+                        ind = p(i)%vert(findloc(iinj, .true., dim=1))
+                        indp1 = j
+                        indp2 = i
+                    elseif (count(.not. iinj(1:p(i)%ne)) == 1) then
+                        ind = p(i)%vert(findloc(.not. iinj, .true., dim=1))
+                        indp1 = j
+                        indp2 = i
+                    end if 
+                    if (indp1 /= 0 .and. indp2 /= 0 .and. ind /= 0) then 
+                        do k = 1, p(i)%nv 
+                            if (p(indp1)%x(k) == p(indp2)%x(ind) .and. &
+                                p(indp1)%y(k) == p(indp2)%y(ind)) then 
+                                ispointintersection = .true.
+                            end if 
+                        end do 
+                    end if  
+                    
+                    
+                    if (ispointintersection) then 
+                        ! Print message
+                        print *,'OrientNestedClosedPolygons: point ' // & 
+                            'intersection detected between polygons, ' // & 
+                            'continuing...'
+                    else
+                        call PolygonWarningHandler(&
+                            'OrientNestedClosedPolygons: when sorting ' // &
+                            ' polygons, some polygons seem to ' // &
+                            'intersect. Returning...')
+                        flag = 2
+                        return 
+                    end if 
+                end if
 
                 ! Add to matrix
-                if (all(jini)) then 
-                    inpolygonmatrix(i, j) = .true.
-                elseif (all(iinj)) then 
-                    inpolygonmatrix(j, i) = .true.
+                if (any(jini)) then 
+                    if (count(jini) > count(iinj)) then ! generalized to deal with point intersections
+                        inpolygonmatrix(i, j) = .true.
+                    else
+                        inpolygonmatrix(j, i) = .true.
+                    end if 
+                elseif (any(iinj)) then 
+                    if (count(iinj) > count(jini)) then ! generalized to deal with point intersections
+                        inpolygonmatrix(j, i) = .true.
+                    else
+                        inpolygonmatrix(i, j) = .true.
+                    end if 
                 end if 
 
                 !    Housekeeping

@@ -419,19 +419,21 @@ module goatmod_types
 
         ! SOLPS catalog topology label (diagnostic refinement of
         ! topoflag; assigned by ClassifyBasicSOLPSCatalogTopology when
-        ! the configuration matches the one-O-point / max-four-X-point
-        ! catalog, otherwise 'UNKNOWN'). Internal only: the label/orient
-        ! strings themselves are not written to any output file, but the
-        ! integer SOLPSgeometryID derived from them (below) is.
+        ! the configuration matches a basic SOLPS family, otherwise
+        ! 'UNKNOWN'). Internal only: the label/orient
+        ! strings themselves are not written to any output file. A
+        ! forced GENERAL path may retain a recognized catalog label.
         character(len=64)                       :: SOLPStopologylabel = 'UNKNOWN'
         character(len=64)                       :: SOLPStopologyorient = 'n/a'
 
-        ! SOLPS geometry ID: the basic-family topology encoded as the
-        ! integer B2.5 uses internally (b2mod_geometry):
+        ! SOLPS geometry ID: the catalog family used by B2.5, with an
+        ! explicit GENERAL override. It may differ from topoflag for a
+        ! multi-X-point mesh. Values from b2mod_geometry:
         !   3 = LIMITER, 4 = SN, 5 = CDN, 6 = DDN bottom, 7 = DDN top,
-        !   13 = GENERAL (UNKNOWN topologies). Set from
-        !   SOLPStopologylabel in IdentifySOLPSTopology and written to
-        !   the traduit topology block (record GEOMETRY_ID).
+        !   13 = GENERAL (unknown or explicitly general topology).
+        ! Set from the catalog label, then overridden when GENERAL is
+        ! explicitly forced in IdentifySOLPSTopology. Written to the traduit
+        ! topology block (record GEOMETRY_ID).
         integer(I8)                             :: SOLPSgeometryID = 13
 
         ! OMP & IMP
@@ -2251,7 +2253,7 @@ module goatmod_types
             fmt = '(1'//Ifm//')'
             write(fu, fmt) topoflag
 
-            ! SOLPS geometry ID (basic-family topology as a B2.5
+            ! SOLPS geometry ID (catalog family or forced GENERAL as a B2.5
             ! b2mod_geometry constant: 3/4/5/6/7/13)
             tempstring = '*cf:    int                1    GEOMETRY_ID'
             write(fu, '(a)' ) tempstring

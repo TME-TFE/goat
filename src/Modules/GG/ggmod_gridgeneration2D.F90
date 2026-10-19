@@ -18981,6 +18981,10 @@ module ggmod_gridgeneration2D
         ! SOLPS topology identification and face region remapping
         call IdentifySOLPSTopology(simgrid, topomesh, options)
 
+        ! GENERAL retains the generic regions above. Explicit forcing
+        ! may select it even when the catalog recognizes a basic family.
+        if (simgrid%data%SOLPSgeometryID == 13) return
+
         ! Catalog-specific SOLPS region conventions: for recognized
         ! catalog topologies, overwrite the generic remapping above
         ! with the region numbering SOLPS expects.
@@ -19177,8 +19181,8 @@ module ggmod_gridgeneration2D
 
         ! Derive the SOLPS geometry ID (B2.5 b2mod_geometry constant)
         ! from the basic-family label. Written to the traduit topology
-        ! block; independent of the region writers, so it is set even
-        ! when no region writer fires (e.g. UNKNOWN -> GENERAL).
+        ! block. An explicit GENERAL force may override this label
+        ! below, including when a basic family was detected.
         select case (trim(catalabel))
         case ('GEOMETRY_LIMITER')
             simgrid%data%SOLPSgeometryID = 3
@@ -19194,8 +19198,6 @@ module ggmod_gridgeneration2D
             ! UNKNOWN and anything unrecognized -> GENERAL
             simgrid%data%SOLPSgeometryID = 13
         end select
-        print *, 'SOLPS geometry ID: ', simgrid%data%SOLPSgeometryID
-
         ! Determine topology type
         !========================
         ! Get topomesh topology
@@ -19227,6 +19229,7 @@ module ggmod_gridgeneration2D
                     print *, 'attempting to force general topology...'
                     TMTop = TMTopGeneral
                 end if
+                simgrid%data%SOLPSgeometryID = 13
 
             case ('linear', 'L', 'l')
 
@@ -19263,6 +19266,10 @@ module ggmod_gridgeneration2D
             end select
         end if 
         simgrid%data%topoflag = TMTop
+
+        ! The catalog ID remains valid for an automatically classified
+        ! multi-X-point mesh, even when its topoflag is GENERAL.
+        print *, 'SOLPS geometry ID: ', simgrid%data%SOLPSgeometryID
 
         ! Remap cvReg
         !============

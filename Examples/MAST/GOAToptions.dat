@@ -92,6 +92,13 @@ VERSION 1.00.00
 'goat.vessel.TP'                    '[1, 2]'
 'goat.vessel.TPind'                 '[1, 2]'
 
+# SOLPS divertor targets (structures the primary strike legs hit;
+# required by the new GOAT primary-strike guard). MAST is a clean CDN.
+'goat.vessel.solps_lower_divertor_inner_target'   '[1]'
+'goat.vessel.solps_lower_divertor_outer_target'   '[4]'
+'goat.vessel.solps_upper_divertor_inner_target'   '[2]'
+'goat.vessel.solps_upper_divertor_outer_target'   '[3]'
+
 # Structures to be excluded when constructing vessel (if empty, all are included)
 'goat.vessel.exclude'               '[]'
 #'goat.vessel.exclude'               '[1, 2, 3, 4, 5, 6, 7, 8]'

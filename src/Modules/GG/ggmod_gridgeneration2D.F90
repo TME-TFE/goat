@@ -122,7 +122,8 @@ module ggmod_gridgeneration2D
     public :: GenerateUnstructuredAlignedGrid, TranslateGridLabels, &
         ComputeTopologicalData, GetGridFaceLabelMappingGD, &
         ComputeVoidRegionPolygonSet, WriteVoidRegionFile, GGTMDataUDT, &
-        WriteVoidRegionFileGoat, UpdateVoidRegionCoordinates, ReadVoidRegionFileGoat
+        WriteVoidRegionFileGoat, UpdateVoidRegionCoordinates, ReadVoidRegionFileGoat, &
+        RemoveGeneratedGridNonTargetWallTubes
 
     ! Module parameters
     real(R8), parameter, private        :: tprelfieldtol = 1e-10 ! relative field tolerance under which extrema are removed
@@ -776,7 +777,7 @@ module ggmod_gridgeneration2D
     ! Unstructured aligned grid generator
     subroutine GenerateUnstructuredAlignedGrid(simgrid, topomesh, magneticField, &
         vessel, fieldtracer, boundarytracer, streamlinetracer, options, &
-        ggtmdataopt)
+        ggtmdataopt, restrictwallcontacttotargets)
 
         ! Description
         !============
@@ -813,6 +814,8 @@ module ggmod_gridgeneration2D
         type(GGoptionsUDT)          :: options 
         type(GridUDT)               :: simgrid
         type(GGTMDataUDT), optional, intent(out)    :: ggtmdataopt
+        logical, optional, intent(in)               :: &
+            restrictwallcontacttotargets
 
         ! Auxiliary
         real(R8)                    :: valplf, xb(1:2), yb(1:2)
@@ -1142,6 +1145,17 @@ module ggmod_gridgeneration2D
         ! Extract
         call ExtractSimulationGrid(simgrid, grid, magneticField, &
             topomesh, ggtmdata, options)
+
+        ! removewidegridregions acts first on the coarse topological mesh.
+        ! Enforce the stricter SOLPS-target contact rule only after the
+        ! elemental grid flux tubes exist; a topomesh tube can contain the
+        ! whole SOL and is therefore far too coarse for this operation.
+        if (present(restrictwallcontacttotargets)) then
+            if (restrictwallcontacttotargets) then
+                call RemoveGeneratedGridNonTargetWallTubes(simgrid, &
+                    topomesh, vessel, magneticField, options)
+            end if
+        end if
 
         ! Output
         if (present(ggtmdataopt)) then 
@@ -13864,6 +13878,13 @@ module ggmod_gridgeneration2D
             valpLmin, valpLmax, decaylength, xv, yv, tempLmin, tempLmax, &
             tempdecaylength
         type(Coordinates2DDistanceDFUDT)            :: Lmin, Lmax
+        integer(I8), allocatable, dimension(:)      :: effIDs
+        real(R8), allocatable, dimension(:)         :: effLmin, &
+            effLmax, effdec
+        integer(I8)                                 :: nbelow, nabove
+        logical                                     :: dovesseleff
+        character(len=64)                           :: catalabel, &
+            cataorient
 
         ! Loop
         integer(I8)                                 :: i 
@@ -13965,8 +13986,54 @@ module ggmod_gridgeneration2D
                     end do 
                 end if 
 
+                ! Effective structure refinement lists: start from
+                ! the user's gg.ref.LB.structureIDs input
+                effIDs = options%refLBstructureIDs
+                effLmin = options%refLBLminstructure
+                effLmax = options%refLBLmaxstructure
+                effdec = options%refLBdecaylengthstructure
+                dovesseleff = options%refLBdovessel
+
+                ! SOLPS target refinement, gated behind
+                ! gg.ref.solps_target_refinements (default off, so
+                ! grids not prepared for SOLPS keep their old
+                ! behavior): for SOLPS-classified geometries the
+                ! limiter surface / divertor target segments
+                ! (goat.vessel.solps_*_target) are added to
+                ! gg.ref.LB.structureIDs when missing. Empty lists
+                ! simply contribute nothing - no requirement is
+                ! enforced here.
+                if (options%solpstargetrefinements) then
+                call ClassifyBasicSOLPSCatalogTopology(topomesh, &
+                    catalabel, cataorient)
+                if (trim(catalabel) == 'GEOMETRY_LIMITER') then
+                    call AddSolpsSegsToRefinement( &
+                        vessel%solpslimind, vessel%nsolpslim, &
+                        'solps_limiter_target')
+                elseif (trim(catalabel) /= 'UNKNOWN') then
+                    call CountSOLPSXPointSides(topomesh, nbelow, &
+                        nabove)
+                    if (nbelow > 0) then
+                        call AddSolpsSegsToRefinement( &
+                            vessel%solpsldiind, vessel%nsolpsldi, &
+                            'solps_lower_divertor_inner_target')
+                        call AddSolpsSegsToRefinement( &
+                            vessel%solpsldoind, vessel%nsolpsldo, &
+                            'solps_lower_divertor_outer_target')
+                    end if
+                    if (nabove > 0) then
+                        call AddSolpsSegsToRefinement( &
+                            vessel%solpsudiind, vessel%nsolpsudi, &
+                            'solps_upper_divertor_inner_target')
+                        call AddSolpsSegsToRefinement( &
+                            vessel%solpsudoind, vessel%nsolpsudo, &
+                            'solps_upper_divertor_outer_target')
+                    end if
+                end if
+                end if
+
                 ! Include vessel vertices (e.g. targets)?
-                if (options%refLBdovessel) then 
+                if (dovesseleff) then
                     ! Get labels & coordinates
                     call vessel%polygonset%GetLabels(labels)
                     call vessel%polygonset%GetVertices(xv, yv)
@@ -13978,16 +14045,16 @@ module ggmod_gridgeneration2D
                     tempdecaylength = 0
 
                     ! Add per vessel structure
-                    do i = 1, size(options%refLBstructureIDs)
+                    do i = 1, size(effIDs)
                         ! Unpack ID
-                        associate(tID       => options%refLBstructureIDs(i))
+                        associate(tID       => effIDs(i))
 
                         ! Check vertices
                         where ( (labels(:, 1) == tID) .or. (labels(:, 2) == tID) ) 
                             includevesselvertex = .true. 
-                            tempLmin = options%refLBLminstructure(i)
-                            tempLmax = options%refLBLmaxstructure(i)
-                            tempdecaylength = options%refLBdecaylengthstructure(i)
+                            tempLmin = effLmin(i)
+                            tempLmax = effLmax(i)
+                            tempdecaylength = effdec(i)
                         end where 
             
                         ! Housekeeping
@@ -14082,6 +14149,46 @@ module ggmod_gridgeneration2D
 
         end select
 
+    contains
+
+        ! Add the segments of one SOLPS target list to the effective
+        ! structure refinement lists (gg.ref.LB.structureIDs), unless
+        ! already present; refinement values are copied from the
+        ! first structure entry, or from the X-point refinement
+        ! values when the list is empty.
+        subroutine AddSolpsSegsToRefinement(segind, nseg, tagname)
+            integer(I4), intent(in)     :: segind(:)
+            integer(I4), intent(in)     :: nseg
+            character(*), intent(in)    :: tagname
+
+            integer(I8)                 :: jj, sid
+            real(R8)                    :: aLmin, aLmax, adec
+
+            do jj = 1, int(nseg, kind=I8)
+                sid = int(segind(jj), kind=I8)
+                if (size(effIDs) > 0) then
+                    if (any(effIDs == sid)) cycle
+                end if
+                if (size(effIDs) > 0) then
+                    aLmin = effLmin(1)
+                    aLmax = effLmax(1)
+                    adec = effdec(1)
+                else
+                    aLmin = options%refLBLminxp
+                    aLmax = options%refLBLmaxxp
+                    adec = options%refLBdecaylengthxp
+                end if
+                effIDs = [effIDs, sid]
+                effLmin = [effLmin, aLmin]
+                effLmax = [effLmax, aLmax]
+                effdec = [effdec, adec]
+                dovesseleff = .true.
+                print *, 'InitializeGGTMLineRefiner: added ' // &
+                    tagname // ' segment ', sid, &
+                    ' to gg.ref.LB.structureIDs'
+            end do
+
+        end subroutine
 
     end subroutine 
 
@@ -16478,6 +16585,550 @@ module ggmod_gridgeneration2D
 
     end subroutine
 
+    ! Narrow-grid SOLPS target enforcement on elemental grid flux tubes
+    subroutine RemoveGeneratedGridNonTargetWallTubes(simgrid, topomesh, &
+        vessel, magneticField, options)
+
+        ! removewidegridregions deliberately remains a topomesh operation.
+        ! This second pass must instead use FluxDataUDT: its entries are the
+        ! actual radial flux tubes in the generated grid. Removing a
+        ! topomesh%tube here would remove an entire SOL/PFR object at once.
+
+        type(GridUDT), intent(inout)            :: simgrid
+        type(TopomeshUDT), intent(in)           :: topomesh
+        type(VesselUDT), intent(in)             :: vessel
+        type(MagneticFieldUDT), intent(in)      :: magneticField
+        type(GGOptionsUDT), intent(in)          :: options
+
+        type(GridUDT)                           :: newgrid
+        character(len=64)                       :: topology, orient
+        logical, allocatable                    :: allowed(:), removeft(:), &
+            removecell(:), keepface(:), exposedface(:), keepvert(:), &
+            usedvert(:)
+        integer(I8), allocatable                :: ftfaces(:), ftcells(:), &
+            fcells(:), cverts(:), tmfaces(:), candidates(:), &
+            facemap(:), vertmap(:), facelabelsGG(:), facelabelsGD(:), &
+            alltmfaces(:)
+        real(R8)                                :: x1, x2, &
+            y1, y2
+        integer(I8)                             :: i, j, k, oldcell, &
+            newcell, oldface, newface, pos, tmlabel, interfacelabel, &
+            nwallft, nbadft, nfallbackinterface, root1, root2, keeproot, &
+            nearcell, ndetachedft, ncomponents
+        logical                                 :: toucheswall
+        logical, allocatable                    :: cellretained(:)
+        integer(I8), allocatable                :: parent(:), opids(:), &
+            xpids(:), comproots(:), compcells(:)
+        real(R8)                                :: refx, refy, dref, dbest
+
+        associate(&
+            fd => simgrid%data%fluxdata, &
+            f  => simgrid%face,          &
+            c  => simgrid%cell,          &
+            v  => simgrid%vert)
+
+        ! Use the same classifier used later by IdentifySOLPSTopology and the
+        ! catalog-specific volume/face-region assignment.
+        call ClassifyBasicSOLPSCatalogTopology(topomesh, topology, orient)
+        allocate(allowed(vessel%nstructures))
+        allowed = .false.
+
+        select case (trim(topology))
+        case ('GEOMETRY_LIMITER')
+            if (vessel%nsolpslim <= 0) then
+                call gdErrorHandler( &
+                    'RemoveGeneratedGridNonTargetWallTubes: narrow ' // &
+                    'limiter grid requires solps_limiter_target')
+            end if
+            allowed(vessel%solpslimind) = .true.
+        case ('GEOMETRY_SN')
+            if (trim(orient) == 'lower') then
+                if ((vessel%nsolpsldi <= 0) .or. &
+                    (vessel%nsolpsldo <= 0)) then
+                    call gdErrorHandler( &
+                        'RemoveGeneratedGridNonTargetWallTubes: lower SN ' // &
+                        'requires lower inner and outer targets')
+                end if
+                allowed(vessel%solpsldiind) = .true.
+                allowed(vessel%solpsldoind) = .true.
+            elseif (trim(orient) == 'upper') then
+                if ((vessel%nsolpsudi <= 0) .or. &
+                    (vessel%nsolpsudo <= 0)) then
+                    call gdErrorHandler( &
+                        'RemoveGeneratedGridNonTargetWallTubes: upper SN ' // &
+                        'requires upper inner and outer targets')
+                end if
+                allowed(vessel%solpsudiind) = .true.
+                allowed(vessel%solpsudoind) = .true.
+            else
+                call gdErrorHandler( &
+                    'RemoveGeneratedGridNonTargetWallTubes: unknown SN ' // &
+                    'orientation ' // trim(orient))
+            end if
+        case ('GEOMETRY_CDN', 'GEOMETRY_DDN_BOTTOM', &
+            'GEOMETRY_DDN_TOP')
+            if ((vessel%nsolpsldi <= 0) .or. &
+                (vessel%nsolpsldo <= 0) .or. &
+                (vessel%nsolpsudi <= 0) .or. &
+                (vessel%nsolpsudo <= 0)) then
+                call gdErrorHandler( &
+                    'RemoveGeneratedGridNonTargetWallTubes: double null ' // &
+                    'requires all four divertor targets')
+            end if
+            allowed(vessel%solpsldiind) = .true.
+            allowed(vessel%solpsldoind) = .true.
+            allowed(vessel%solpsudiind) = .true.
+            allowed(vessel%solpsudoind) = .true.
+        case default
+            call gdErrorHandler( &
+                'RemoveGeneratedGridNonTargetWallTubes: unsupported ' // &
+                'SOLPS topology ' // trim(topology))
+        end select
+
+        allocate(removeft(fd%nFt))
+        removeft = .false.
+        nwallft = 0
+        nbadft = 0
+
+        ! A tube is kept only when each of its physical-wall faces lies FULLY
+        ! on an allowed target segment, tested on the face ENDPOINTS: grid
+        ! wall vertices sit on their structure polyline to ~1e-12 m, so both
+        ! endpoints of a genuine contact face are ON the declared target
+        ! (an endpoint exactly at a structure junction counts through the
+        ! target side). A face whose far endpoint overhangs the plate end
+        ! onto a neighbouring structure (e.g. a pump-slit plasma/void
+        ! interface) fails and its tube is removed. The raw
+        ! vessel%structures polylines are used deliberately: the levelset
+        ! labels (exactplfvessel%EvaluateLabel) reflect the CLOSED target-
+        ! plate polygons, which swallow the first few mm of an adjacent
+        ! structure and mislabel overhanging faces as target contact.
+        do i = 1, fd%nFt
+            ftcells = GetFTCell(fd, i)
+            toucheswall = .false.
+            tube_cells: do k = 1, size(ftcells)
+                ftfaces = GetCellFace(c, ftcells(k))
+                do j = 1, size(ftfaces)
+                    oldface = ftfaces(j)
+                    if (.not. f%BF(oldface)) cycle
+                    tmlabel = f%TMfacelabel(oldface)
+                    if ((tmlabel < 1) .or. &
+                        (tmlabel > topomesh%face%ntot)) cycle
+                    if (.not. any(topomesh%face%type(tmlabel) == &
+                        [TMfacebndID, TMfacealbndID])) cycle
+
+                    toucheswall = .true.
+                    x1 = v%x(f%vert(oldface, 1))
+                    y1 = v%y(f%vert(oldface, 1))
+                    x2 = v%x(f%vert(oldface, 2))
+                    y2 = v%y(f%vert(oldface, 2))
+                    if ((.not. OnAllowedStructure(vessel, allowed, x1, y1)) &
+                        .or. &
+                        (.not. OnAllowedStructure(vessel, allowed, x2, y2))) &
+                        then
+                        removeft(i) = .true.
+                    end if
+                    if (removeft(i)) exit tube_cells
+                end do
+            end do tube_cells
+            if (toucheswall) nwallft = nwallft + 1
+            if (removeft(i)) nbadft = nbadft + 1
+        end do
+
+        print *, 'RemoveGeneratedGridNonTargetWallTubes: topology ', &
+            trim(topology), ' (', trim(orient), '), elemental tubes ', &
+            fd%nFt, ', wall-contacting ', nwallft, ', removed ', nbadft
+        if ((nwallft == 0) .or. (nwallft == nbadft)) then
+            call gdErrorHandler( &
+                'RemoveGeneratedGridNonTargetWallTubes: no target-only ' // &
+                'wall-connected elemental flux tube would remain')
+        end if
+
+        ! The tube removals (the coarse topomesh pass and the elemental pass
+        ! above) can disconnect the surviving grid: flux tubes that DO end on
+        ! targets may form an island separated from the main grid by removed
+        ! neighbours (e.g. tubes bridging the two secondary-divertor targets
+        ! over the top of a DDN). SOLPS cannot use a split grid, so keep only
+        ! the component of the real grid — identified as the one closest to
+        ! the O-point (the confined region the grid is built around; the
+        ! X-point fans connect to it by construction) — and remove every
+        ! elemental flux tube of any detached component.
+        allocate(cellretained(c%ntot))
+        cellretained = .true.
+        do i = 1, fd%nFt
+            if (.not. removeft(i)) cycle
+            ftcells = GetFTCell(fd, i)
+            cellretained(ftcells) = .false.
+        end do
+
+        ! Union-find over the retained cells, joined across interior faces
+        allocate(parent(c%ntot))
+        parent = [(i, i = 1, c%ntot)]
+        do i = 1, f%ntot
+            fcells = GetFaceCell(f, i)
+            if (size(fcells) /= 2) cycle
+            if (.not. (cellretained(fcells(1)) .and. &
+                cellretained(fcells(2)))) cycle
+            root1 = ComponentRoot(parent, fcells(1))
+            root2 = ComponentRoot(parent, fcells(2))
+            if (root1 /= root2) parent(root2) = root1
+        end do
+
+        ! Component census (roots and cell counts) of the retained grid
+        allocate(comproots(0), compcells(0))
+        do i = 1, c%ntot
+            if (.not. cellretained(i)) cycle
+            root1 = ComponentRoot(parent, i)
+            pos = 0
+            do j = 1, size(comproots)
+                if (comproots(j) == root1) then
+                    pos = j
+                    exit
+                end if
+            end do
+            if (pos == 0) then
+                comproots = [comproots, root1]
+                compcells = [compcells, 0_I8]
+                pos = size(comproots)
+            end if
+            compcells(pos) = compcells(pos) + 1
+        end do
+        ncomponents = size(comproots)
+        if (ncomponents == 0) then
+            call gdErrorHandler( &
+                'RemoveGeneratedGridNonTargetWallTubes: no retained ' // &
+                'cells left to identify the main grid component')
+        end if
+
+        ndetachedft = 0
+        if (ncomponents > 1) then
+            ! Reference point: the O-point; if the domain has none, fall
+            ! back to the innermost structure GOAT knows — an X-point.
+            opids = topomesh%GetOPointIDs()
+            if (size(opids) >= 1) then
+                refx = topomesh%vert%x(opids(1))
+                refy = topomesh%vert%y(opids(1))
+            else
+                xpids = topomesh%GetXPointIDs()
+                if (size(xpids) == 0) then
+                    call gdErrorHandler( &
+                        'RemoveGeneratedGridNonTargetWallTubes: grid is ' // &
+                        'split but the domain has neither an O-point nor ' // &
+                        'an X-point to identify the real grid')
+                end if
+                refx = topomesh%vert%x(xpids(1))
+                refy = topomesh%vert%y(xpids(1))
+            end if
+
+            ! The real grid = the component owning the retained cell closest
+            ! to the reference point
+            dbest = huge(1.0_R8)
+            nearcell = 0
+            do i = 1, c%ntot
+                if (.not. cellretained(i)) cycle
+                dref = (c%x(i) - refx)**2 + (c%y(i) - refy)**2
+                if (dref < dbest) then
+                    dbest = dref
+                    nearcell = i
+                end if
+            end do
+            keeproot = ComponentRoot(parent, nearcell)
+
+            ! Remove every elemental tube of a detached component. Tubes are
+            ! whole objects: all their cells must sit in one component.
+            do i = 1, fd%nFt
+                if (removeft(i)) cycle
+                ftcells = GetFTCell(fd, i)
+                root1 = ComponentRoot(parent, ftcells(1))
+                do k = 2, size(ftcells)
+                    if (ComponentRoot(parent, ftcells(k)) /= root1) then
+                        call gdErrorHandler( &
+                            'RemoveGeneratedGridNonTargetWallTubes: an ' // &
+                            'elemental flux tube spans two grid components')
+                    end if
+                end do
+                if (root1 /= keeproot) then
+                    removeft(i) = .true.
+                    cellretained(ftcells) = .false.
+                    ndetachedft = ndetachedft + 1
+                end if
+            end do
+
+            ! Every remaining cell must now belong to the kept component: a
+            ! detached cell not covered by any elemental tube cannot be
+            ! removed at tube granularity and must abort loudly.
+            do i = 1, c%ntot
+                if (.not. cellretained(i)) cycle
+                if (ComponentRoot(parent, i) /= keeproot) then
+                    call gdErrorHandler( &
+                        'RemoveGeneratedGridNonTargetWallTubes: detached ' // &
+                        'grid cell is not covered by any elemental flux ' // &
+                        'tube')
+                end if
+            end do
+
+            print *, 'RemoveGeneratedGridNonTargetWallTubes: grid was ' // &
+                'split into ', ncomponents, ' parts (cells: ', compcells, &
+                '); kept the part nearest the O-point, removed ', &
+                ndetachedft, ' detached elemental tube(s)'
+        end if
+
+        if ((nbadft == 0) .and. (ndetachedft == 0)) return
+
+        allocate(removecell(c%ntot))
+        removecell = .false.
+        do i = 1, fd%nFt
+            if (.not. removeft(i)) cycle
+            ftcells = GetFTCell(fd, i)
+            removecell(ftcells) = .true.
+        end do
+        if (all(removecell)) then
+            call gdErrorHandler( &
+                'RemoveGeneratedGridNonTargetWallTubes: target filter ' // &
+                'would remove every generated cell')
+        end if
+
+        ! Keep faces used by at least one retained cell. A formerly internal
+        ! face with one retained and one removed neighbour is the new plasma-
+        ! void interface.
+        allocate(keepface(f%ntot), exposedface(f%ntot))
+        keepface = .false.
+        exposedface = .false.
+        do i = 1, f%ntot
+            fcells = GetFaceCell(f, i)
+            keepface(i) = any(.not. removecell(fcells))
+            if (size(fcells) == 2) then
+                exposedface(i) = removecell(fcells(1)) .neqv. &
+                    removecell(fcells(2))
+            end if
+        end do
+
+        allocate(keepvert(v%ntot), usedvert(v%ntot))
+        usedvert = .false.
+        do i = 1, f%ntot
+            if (keepface(i)) usedvert(f%vert(i, :)) = .true.
+        end do
+        ! GGTMDataUDT stores grid vertex IDs in its field-line segments and is
+        ! consumed later by label translation and fort.78 construction. Keep
+        ! the complete vertex numbering stable; vertices belonging only to
+        ! removed cells become harmless orphans with fieldlineID zero below.
+        keepvert = .true.
+
+        allocate(facemap(f%ntot), vertmap(v%ntot))
+        facemap = 0
+        vertmap = 0
+        newface = 0
+        do i = 1, f%ntot
+            if (.not. keepface(i)) cycle
+            newface = newface + 1
+            facemap(i) = newface
+        end do
+        j = 0
+        do i = 1, v%ntot
+            if (.not. keepvert(i)) cycle
+            j = j + 1
+            vertmap(i) = j
+        end do
+
+        newgrid%vert%ntot = count(keepvert)
+        newgrid%face%ntot = count(keepface)
+        newgrid%cell%ntot = count(.not. removecell)
+        newgrid%cell%nvert = sum(c%vertP(:, 2), mask=.not. removecell)
+        newgrid%cell%nface = newgrid%cell%nvert
+        newgrid%data%fluxdata%nFs = 0
+        newgrid%data%fluxdata%nFt = 0
+        call AllocateGrid(newgrid)
+
+        newgrid%data%sglegacy%isClassicalGrid = 0
+        newgrid%vert%x = pack(v%x, keepvert)
+        newgrid%vert%y = pack(v%y, keepvert)
+        newgrid%vert%fieldlineID = pack(v%fieldlineID, keepvert)
+        newgrid%vert%bx = pack(v%bx, keepvert)
+        newgrid%vert%by = pack(v%by, keepvert)
+        newgrid%vert%psi = pack(v%psi, keepvert)
+        newgrid%vert%ffbz = pack(v%ffbz, keepvert)
+        do i = 1, v%ntot
+            if (keepvert(i) .and. .not. usedvert(i)) then
+                newgrid%vert%fieldlineID(vertmap(i)) = 0
+            end if
+        end do
+
+        newgrid%face%vert(:, 1) = &
+            vertmap(pack(f%vert(:, 1), keepface))
+        newgrid%face%vert(:, 2) = &
+            vertmap(pack(f%vert(:, 2), keepface))
+        newgrid%face%label = pack(f%label, keepface)
+        newgrid%face%TMfacelabel = pack(f%TMfacelabel, keepface)
+        newgrid%face%reg = pack(f%reg, keepface)
+        newgrid%face%aligned = pack(f%aligned, keepface)
+
+        newcell = 0
+        pos = 1
+        do oldcell = 1, c%ntot
+            if (removecell(oldcell)) cycle
+            newcell = newcell + 1
+            cverts = GetCellVert(c, oldcell)
+            newgrid%cell%vertP(newcell, 1) = pos
+            newgrid%cell%vertP(newcell, 2) = size(cverts)
+            newgrid%cell%vert(pos:pos+size(cverts)-1) = vertmap(cverts)
+            newgrid%cell%x(newcell) = c%x(oldcell)
+            newgrid%cell%y(newcell) = c%y(oldcell)
+            newgrid%cell%psi(newcell) = c%psi(oldcell)
+            newgrid%cell%bp(newcell) = c%bp(oldcell)
+            newgrid%cell%bt(newcell) = c%bt(oldcell)
+            newgrid%cell%reg(newcell) = c%reg(oldcell)
+            pos = pos + size(cverts)
+        end do
+        newgrid%cell%ngc = 0
+
+        ! Give each new interface an existing SOL or PFR topomesh boundary
+        ! label. Prefer a boundary belonging to the retained topological cell,
+        ! but do not require one: a legitimate PFR cell can be bounded only by
+        ! vessel and separatrix faces when addPFboundaries is disabled (the
+        ! normal SOLPS setup). SOL/PFR topomesh labels have the same outer-
+        ! boundary translation; here the label supplies that category, while
+        ! SetSOLPSRegions* later distinguishes SOL and PFR from the adjacent
+        ! grid-cell flux and assigns the final face region.
+        alltmfaces = [(k, k = 1, topomesh%face%ntot)]
+        nfallbackinterface = 0
+        do oldface = 1, f%ntot
+            if (.not. exposedface(oldface)) cycle
+            fcells = GetFaceCell(f, oldface)
+            if (removecell(fcells(1))) then
+                oldcell = fcells(2)
+            else
+                oldcell = fcells(1)
+            end if
+            tmfaces = topomesh%cell%GetFace(c%reg(oldcell))
+            candidates = pack(tmfaces, topomesh%face%BF(tmfaces) .and. &
+                ((topomesh%face%type(tmfaces) == TMfaceSOLID) .or. &
+                (topomesh%face%type(tmfaces) == TMfacePFID)))
+            if (size(candidates) == 0) then
+                candidates = pack(alltmfaces, &
+                    topomesh%face%BF(alltmfaces) .and. &
+                    ((topomesh%face%type(alltmfaces) == TMfaceSOLID) .or. &
+                    (topomesh%face%type(alltmfaces) == TMfacePFID)))
+                if (size(candidates) == 0) then
+                    call gdErrorHandler( &
+                        'RemoveGeneratedGridNonTargetWallTubes: topomesh ' // &
+                        'has no SOL/PFR outer-boundary label for new ' // &
+                        'plasma-void interfaces')
+                end if
+                nfallbackinterface = nfallbackinterface + 1
+            end if
+            interfacelabel = candidates(1)
+            newface = facemap(oldface)
+            newgrid%face%label(newface) = interfacelabel
+            newgrid%face%TMfacelabel(newface) = interfacelabel
+            newgrid%face%aligned(newface) = 1
+        end do
+
+        if (nfallbackinterface > 0) then
+            print *, 'RemoveGeneratedGridNonTargetWallTubes: mapped ', &
+                nfallbackinterface, ' interface faces through the global ' // &
+                'SOL/PFR outer-boundary category'
+        end if
+
+        call ComputeGridInterconnections(newgrid)
+        call ComputeGridData(newgrid, magneticField)
+        call ComputeTopologicalData(newgrid, topomesh, options)
+
+        ! Preserve generator metadata for retained primitives and mark the new
+        ! cut as an ordinary SOL/PFR boundary with no wall boundary layer.
+        newgrid%data%goatggdata%TMfacetype = pack( &
+            simgrid%data%goatggdata%TMfacetype, keepface)
+        newgrid%data%goatggdata%BLind = pack( &
+            simgrid%data%goatggdata%BLind, keepface)
+        newgrid%data%goatggdata%TMverttype = pack( &
+            simgrid%data%goatggdata%TMverttype, keepvert)
+        do oldface = 1, f%ntot
+            if (.not. exposedface(oldface)) cycle
+            newface = facemap(oldface)
+            tmlabel = newgrid%face%TMfacelabel(newface)
+            newgrid%data%goatggdata%TMfacetype(newface) = &
+                topomesh%face%type(tmlabel)
+            newgrid%data%goatggdata%BLind(newface) = 0
+        end do
+        call GetGridFaceLabelMappingGD(newgrid, topomesh, &
+            facelabelsGG, facelabelsGD)
+        newgrid%data%goatggdata%facelabelsGG = facelabelsGG
+        newgrid%data%goatggdata%facelabelsGD = facelabelsGD
+        newgrid%data%hasGoatGGData = .true.
+
+        print *, 'RemoveGeneratedGridNonTargetWallTubes: retained ', &
+            newgrid%cell%ntot, ' of ', c%ntot, ' cells; exposed ', &
+            count(exposedface), ' plasma-void faces'
+        end associate
+        simgrid = newgrid
+
+    contains
+
+        ! Is (px, py) ON the raw polyline of any ALLOWED target structure?
+        function OnAllowedStructure(vessel, allowed, px, py) result(onit)
+
+            type(VesselUDT), intent(in) :: vessel
+            logical, intent(in)         :: allowed(:)
+            real(R8), intent(in)        :: px, py
+            logical                     :: onit
+
+            real(R8), parameter         :: walltol = 1e-7_R8
+            integer(I8)                 :: s, q, nseg
+            real(R8)                    :: ax, ay, bx, by, ddx, ddy, &
+                seg2, tpar, dd
+
+            onit = .false.
+            do s = 1, vessel%nstructures
+                if (.not. allowed(s)) cycle
+                nseg = vessel%structures(s)%np - 1
+                if (vessel%structures(s)%isclosed) nseg = nseg + 1
+                do q = 1, nseg
+                    ax = vessel%structures(s)%x(q)
+                    ay = vessel%structures(s)%y(q)
+                    if (q < vessel%structures(s)%np) then
+                        bx = vessel%structures(s)%x(q + 1)
+                        by = vessel%structures(s)%y(q + 1)
+                    else
+                        bx = vessel%structures(s)%x(1)
+                        by = vessel%structures(s)%y(1)
+                    end if
+                    ddx = bx - ax
+                    ddy = by - ay
+                    seg2 = ddx*ddx + ddy*ddy
+                    if (seg2 <= 0.0_R8) cycle
+                    tpar = ((px - ax)*ddx + (py - ay)*ddy)/seg2
+                    tpar = max(0.0_R8, min(1.0_R8, tpar))
+                    dd = sqrt((px - (ax + tpar*ddx))**2 + &
+                        (py - (ay + tpar*ddy))**2)
+                    if (dd <= walltol) then
+                        onit = .true.
+                        return
+                    end if
+                end do
+            end do
+
+        end function
+
+        ! Union-find root with path compression (grid connected components)
+        function ComponentRoot(parent, start) result(root)
+
+            integer(I8), intent(inout)  :: parent(:)
+            integer(I8), intent(in)     :: start
+            integer(I8)                 :: root, cur, up
+
+            root = start
+            do while (parent(root) /= root)
+                root = parent(root)
+            end do
+            cur = start
+            do while (parent(cur) /= root)
+                up = parent(cur)
+                parent(cur) = root
+                cur = up
+            end do
+
+        end function
+
+    end subroutine
+
     ! Compute grid data
     subroutine ComputeGridData(simgrid, magneticField)
 
@@ -17142,7 +17793,73 @@ module ggmod_gridgeneration2D
         simgrid%data%nxp = size(simgrid%data%xpointID)
         simgrid%data%nop = size(simgrid%data%opointID)
         simgrid%data%nsp = size(simgrid%data%spointID)
-        simgrid%data%ntp = size(simgrid%data%tpointID)        
+        simgrid%data%ntp = size(simgrid%data%tpointID)
+
+        ! Topological points whose grid vertex is ORPHANED (fieldlineID 0:
+        ! the narrow target filter removed every flux tube of that vertex,
+        ! so the point's flux surface does not exist in the delivered grid)
+        ! are DROPPED from the lists. They are written to the B2.5
+        ! topological block with fsID = fieldlineID, and B2.5's
+        ! init_mapping rejects an X-point with fsID <= 0 — seen on an LFS
+        ! snowflake-minus, whose far-SOL companion X-point loses its
+        ! surface together with the removed far-SOL tubes. A complete
+        ! (wide) grid keeps a live fieldlineID on every topological
+        ! vertex, so this is a no-op there. Losing a PRIMARY X-point would
+        ! mean the grid lost its confining separatrix: abort loudly.
+        block
+            logical, allocatable        :: keepxp(:), keepsp(:), keeptp(:)
+            integer(I8), allocatable    :: primlist(:)
+            integer(I8)                 :: ip
+
+            allocate(keepxp(simgrid%data%nxp))
+            do ip = 1, simgrid%data%nxp
+                keepxp(ip) = simgrid%vert%fieldlineID( &
+                    simgrid%data%xpointID(ip)) > 0
+            end do
+            if (.not. all(keepxp)) then
+                primlist = topomesh%GetPrimaryXPointIDs()
+                do ip = 1, simgrid%data%nxp
+                    if ((.not. keepxp(ip)) .and. &
+                        any(simgrid%data%xpointID(ip) == primlist)) then
+                        call gdErrorHandler( &
+                            'ComputeTopologicalData: a PRIMARY X-point ' // &
+                            'has no flux surface in the filtered grid')
+                    end if
+                end do
+                allocate(keepsp(simgrid%data%nsp))
+                do ip = 1, simgrid%data%nsp
+                    keepsp(ip) = any(simgrid%data%spointxpID(ip) == &
+                        pack(simgrid%data%xpointID, keepxp)) .and. &
+                        (simgrid%vert%fieldlineID( &
+                        simgrid%data%spointID(ip)) > 0)
+                end do
+                print *, 'ComputeTopologicalData: dropped ', &
+                    count(.not. keepxp), ' X-point(s) and ', &
+                    count(.not. keepsp), ' strike point(s) without a ' // &
+                    'flux surface in the filtered grid'
+                simgrid%data%spointID = pack(simgrid%data%spointID, keepsp)
+                simgrid%data%spointxpID = &
+                    pack(simgrid%data%spointxpID, keepsp)
+                simgrid%data%xpointID = pack(simgrid%data%xpointID, keepxp)
+                simgrid%data%nxp = size(simgrid%data%xpointID)
+                simgrid%data%nsp = size(simgrid%data%spointID)
+            end if
+            if (simgrid%data%ntp > 0) then
+                allocate(keeptp(simgrid%data%ntp))
+                do ip = 1, simgrid%data%ntp
+                    keeptp(ip) = simgrid%vert%fieldlineID( &
+                        simgrid%data%tpointID(ip)) > 0
+                end do
+                if (.not. all(keeptp)) then
+                    print *, 'ComputeTopologicalData: dropped ', &
+                        count(.not. keeptp), ' tangency point(s) without ' // &
+                        'a flux surface in the filtered grid'
+                    simgrid%data%tpointID = &
+                        pack(simgrid%data%tpointID, keeptp)
+                    simgrid%data%ntp = size(simgrid%data%tpointID)
+                end if
+            end if
+        end block
 
         ! Compute divertor data
         !======================
@@ -17240,12 +17957,28 @@ module ggmod_gridgeneration2D
         if (allocated(simgrid%data%isprimaryxp)) deallocate(simgrid%data%isprimaryxp)
         allocate(simgrid%data%isprimaryxp(simgrid%data%nxp))
         do i = 1, simgrid%data%nxp
-            if (any(simgrid%data%xpointID(i) == primaryxp)) then 
+            if (any(simgrid%data%xpointID(i) == primaryxp)) then
                 simgrid%data%isprimaryxp(i) = 1
             else
-                simgrid%data%isprimaryxp(i) = 0 
-            end if 
-        end do 
+                simgrid%data%isprimaryxp(i) = 0
+            end if
+        end do
+
+        ! Per-X-point divertor label. Provide a valid zero-filled array
+        ! of length nxp as the default for topologies where
+        ! AddSecondaryXPointRegions does not run (LIMITER, UNKNOWN, ...).
+        ! When AddSecondaryXPointRegions has already filled it (SN/CDN/
+        ! DDN, run earlier in TranslateGridLabelsSOLPS), keep its values.
+        if (allocated(simgrid%data%xpDivLabel)) then
+            if (size(simgrid%data%xpDivLabel) /= simgrid%data%nxp) then
+                deallocate(simgrid%data%xpDivLabel)
+                allocate(simgrid%data%xpDivLabel(simgrid%data%nxp))
+                simgrid%data%xpDivLabel = 0
+            end if
+        else
+            allocate(simgrid%data%xpDivLabel(simgrid%data%nxp))
+            simgrid%data%xpDivLabel = 0
+        end if
 
         ! Additional s-, t-point data
         simgrid%data%spointdivID = vertdivID(simgrid%data%spointID)
@@ -17547,6 +18280,9 @@ module ggmod_gridgeneration2D
         ! Module variables
         use mod_definitions, only: targetID, coreID, outerboundaryID, &
             vesselID
+        use ggmod_solpsregions, only: SetSOLPSRegionsLIM, &
+            SetSOLPSRegionsSN, SetSOLPSRegionsDN, &
+            AddSecondaryXPointRegions
 
         ! Arguments
         type(VesselUDT), intent(in)                 :: vessel
@@ -17877,6 +18613,9 @@ module ggmod_gridgeneration2D
 
                     ! Determine for each face the label
                     do j = 1, size(tempf)
+                        ! A narrow-grid tube may have removed this vessel
+                        ! edge from the generated plasma grid.
+                        if (tempf(j) <= 0) cycle
                         ! Add labels on vertices
                         templabels = [vertlabels(j, :), vertlabels(j+1, :)]
                         
@@ -17926,6 +18665,7 @@ module ggmod_gridgeneration2D
 
                     ! Determine for each face the label
                     do j = 1, size(tempf)
+                        if (tempf(j) <= 0) cycle
                         ! Add labels on vertices
                         templabels = [vertlabels(j, :), vertlabels(j+1, :)]
                         
@@ -17978,6 +18718,7 @@ module ggmod_gridgeneration2D
 
                         ! Determine for each face the label
                         do j = 1, size(tempf)
+                            if (tempf(j) <= 0) cycle
                             ! Add labels on vertices
                             templabels = [vertlabels(j, :), vertlabels(j+1, :)]
                             
@@ -18032,6 +18773,7 @@ module ggmod_gridgeneration2D
 
                         ! Determine for each face the label
                         do j = 1, size(tempf)
+                            if (tempf(j) <= 0) cycle
                             ! Add labels on vertices
                             templabels = [vertlabels(j, :), vertlabels(j+1, :)]
                             
@@ -18239,6 +18981,49 @@ module ggmod_gridgeneration2D
         ! SOLPS topology identification and face region remapping
         call IdentifySOLPSTopology(simgrid, topomesh, options)
 
+        ! GENERAL retains the generic regions above. Explicit forcing
+        ! may select it even when the catalog recognizes a basic family.
+        if (simgrid%data%SOLPSgeometryID == 13) return
+
+        ! Catalog-specific SOLPS region conventions: for recognized
+        ! catalog topologies, overwrite the generic remapping above
+        ! with the region numbering SOLPS expects.
+        ! Currently implemented: GEOMETRY_LIMITER, GEOMETRY_SN
+        ! (lower/upper), GEOMETRY_CDN, GEOMETRY_DDN_BOTTOM/TOP.
+        if (trim(simgrid%data%SOLPStopologylabel) == &
+            'GEOMETRY_LIMITER') then
+            call SetSOLPSRegionsLIM(simgrid, topomesh, vessel)
+        elseif (trim(simgrid%data%SOLPStopologylabel) == &
+            'GEOMETRY_SN') then
+            call SetSOLPSRegionsSN(simgrid, topomesh, vessel, &
+                trim(simgrid%data%SOLPStopologyorient) == 'upper')
+        elseif (trim(simgrid%data%SOLPStopologylabel) == &
+            'GEOMETRY_CDN') then
+            call SetSOLPSRegionsDN(simgrid, topomesh, vessel, &
+                .false.)
+        elseif ((trim(simgrid%data%SOLPStopologylabel) == &
+            'GEOMETRY_DDN_BOTTOM') .or. &
+            (trim(simgrid%data%SOLPStopologylabel) == &
+            'GEOMETRY_DDN_TOP')) then
+            call SetSOLPSRegionsDN(simgrid, topomesh, vessel, &
+                .true.)
+        end if
+
+        ! Secondary (additional) X-point inventory and per-X-point
+        ! divertor labels (and, in a later step, the additional volume
+        ! regions). Runs for the divertor families only - a limiter has
+        ! no X-points by construction, UNKNOWN has no region convention.
+        if ((trim(simgrid%data%SOLPStopologylabel) == 'GEOMETRY_SN') &
+            .or. &
+            (trim(simgrid%data%SOLPStopologylabel) == 'GEOMETRY_CDN') &
+            .or. &
+            (trim(simgrid%data%SOLPStopologylabel) == &
+            'GEOMETRY_DDN_BOTTOM') .or. &
+            (trim(simgrid%data%SOLPStopologylabel) == &
+            'GEOMETRY_DDN_TOP')) then
+            call AddSecondaryXPointRegions(simgrid, topomesh, vessel)
+        end if
+
     end subroutine
 
     subroutine TranslateGridLabelsGD(simgrid, topomesh)
@@ -18332,13 +19117,15 @@ module ggmod_gridgeneration2D
         integer(I8), allocatable, dimension(:)  :: gridface1, &
             gridface2, tubeface, resfcReg, allfID, &
             tfID, sortindex, psind, ind, remfcReg, targetID, xpID, &
-            pxpID, spxpID, spID, tempf, tempv
+            pxpID, spxpID, spID, tempf, tempv, xpsall, cutxp
         integer(I8), allocatable, dimension(:, :)   :: edges
 
         logical                                 :: isxpfound
         logical, allocatable, dimension(:)      :: ispolygonstart, &
-            isbranchingpolygon
+            isbranchingpolygon, keepxpal
         logical, allocatable, dimension(:, :)   :: hasfcreg
+        character(len=64)                       :: catalabel, &
+            cataorient
 
         ! Loop
         integer(I8)                             :: i, j, k 
@@ -18354,6 +19141,63 @@ module ggmod_gridgeneration2D
         print *, 'carefully afterwards'
         print *, '!====================================================!'
 
+        ! Catalog topology labelling
+        !===========================
+        ! Classify the topological mesh into the basic SOLPS/B2.5
+        ! topology families (GEOMETRY_LIMITER/SN/CDN/DDN_BOTTOM/
+        ! DDN_TOP, else UNKNOWN) and store the name as an internal
+        ! label.
+        !
+        ! NARROW-GRID RULE: the classification is made upon the
+        ! X-points that SURVIVE in the delivered grid only. An
+        ! X-point whose grid vertex was orphaned by the narrow-grid
+        ! target filter (fieldlineID 0 - its flux surface left the
+        ! grid together with its off-target divertor region) plays no
+        ! part in the delivered SOLPS topology: e.g. a disconnected
+        ! double null whose secondary divertor is entirely
+        ! off-target grids - and classifies - as a single null, its
+        ! surviving companion X-points handled as secondary ones. A
+        ! complete (wide) grid keeps a live flux surface on every
+        ! X-point, so the exclusion list is empty and nothing
+        ! changes.
+        xpsall = topomesh%GetXPointIDs()
+        allocate(keepxpal(size(xpsall)))
+        do i = 1, size(xpsall)
+            keepxpal(i) = simgrid%vert%fieldlineID(xpsall(i)) > 0
+        end do
+        cutxp = pack(xpsall, .not. keepxpal)
+        if (size(cutxp) > 0) then
+            print *, 'IdentifySOLPSTopology: ', size(cutxp), &
+                ' X-point(s) have no flux surface in the filtered ' // &
+                'grid - classifying the SOLPS topology from the ', &
+                count(keepxpal), ' surviving X-point(s)'
+        end if
+        call ClassifyBasicSOLPSCatalogTopology(topomesh, catalabel, &
+            cataorient, excludedxp=cutxp)
+        simgrid%data%SOLPStopologylabel = catalabel
+        simgrid%data%SOLPStopologyorient = cataorient
+        print *, 'SOLPS catalog topology: ' // trim(catalabel) // &
+            ' (' // trim(cataorient) // ')'
+
+        ! Derive the SOLPS geometry ID (B2.5 b2mod_geometry constant)
+        ! from the basic-family label. Written to the traduit topology
+        ! block. An explicit GENERAL force may override this label
+        ! below, including when a basic family was detected.
+        select case (trim(catalabel))
+        case ('GEOMETRY_LIMITER')
+            simgrid%data%SOLPSgeometryID = 3
+        case ('GEOMETRY_SN')
+            simgrid%data%SOLPSgeometryID = 4
+        case ('GEOMETRY_CDN')
+            simgrid%data%SOLPSgeometryID = 5
+        case ('GEOMETRY_DDN_BOTTOM')
+            simgrid%data%SOLPSgeometryID = 6
+        case ('GEOMETRY_DDN_TOP')
+            simgrid%data%SOLPSgeometryID = 7
+        case default
+            ! UNKNOWN and anything unrecognized -> GENERAL
+            simgrid%data%SOLPSgeometryID = 13
+        end select
         ! Determine topology type
         !========================
         ! Get topomesh topology
@@ -18385,6 +19229,7 @@ module ggmod_gridgeneration2D
                     print *, 'attempting to force general topology...'
                     TMTop = TMTopGeneral
                 end if
+                simgrid%data%SOLPSgeometryID = 13
 
             case ('linear', 'L', 'l')
 
@@ -18421,6 +19266,10 @@ module ggmod_gridgeneration2D
             end select
         end if 
         simgrid%data%topoflag = TMTop
+
+        ! The catalog ID remains valid for an automatically classified
+        ! multi-X-point mesh, even when its topoflag is GENERAL.
+        print *, 'SOLPS geometry ID: ', simgrid%data%SOLPSgeometryID
 
         ! Remap cvReg
         !============
@@ -18906,7 +19755,7 @@ module ggmod_gridgeneration2D
 
     ! Void region computation
     subroutine ComputeVoidRegionPolygonSet(simgrid, topomesh, vessel, &
-        ggtmdata, voidps)
+        ggtmdata, voidps, narrowgrid)
 
         ! Description
         !============
@@ -18953,6 +19802,7 @@ module ggmod_gridgeneration2D
         type(VesselUDT), intent(in)         :: vessel
         type(PolygonSetUDT), intent(out)    :: voidps
         type(GGTMDataUDT), intent(in)       :: ggtmdata
+        logical, optional, intent(in)       :: narrowgrid
 
         ! Auxiliary
         integer(I8)                                 :: tedgeID, &
@@ -18960,24 +19810,33 @@ module ggmod_gridgeneration2D
         integer(I8), allocatable, dimension(:)      :: edgeID, vertID, &
             splitvertID, uedgeID, sortind, allvert, &
             voidedgevID1, voidedgevID2, vesseledgeID1, vesseledgeID2, &
-            tempf, bndfaces
+            tempf, bndfaces, voiddegree
         integer(I8), allocatable, dimension(:, :)   :: labels, &
             voidedgevID
         logical, allocatable, dimension(:)          :: isalbndface, &
             isvesselface, isalignedvert, isvesselvert, &
             istp, isvoidedge, issplitvesseledge, allistp, &
-            issplitvert, includepoints
+            issplitvert, includepoints, boundaryvert
         real(R8), allocatable, dimension(:)         :: alldist, &
-            tempdlcv
+            tempdlcv, wallval, vessellength, vesselstart, &
+            materialstart, materiallength
         type(PolygonSetUDT)                         :: tempvoidps
         type(PolygonLevelsetFunction2DClosedExactUDT)   :: tempvoidplf
         type(GGTMFieldlineDataUDT)                  :: templine, origline
+        logical                                     :: donarrow
+        real(R8)                                    :: mx, my, dx, dy, &
+            seglen2, proj, dist2, bestdist2, s1, s2, &
+            smid, delta, perimeter
+        real(R8), parameter                         :: walltol = 1e-8_R8
 
         ! Loop
         integer(I8)                         :: i, j, k 
     
         ! Initialize
         !===========
+        donarrow = .false.
+        if (present(narrowgrid)) donarrow = narrowgrid
+
         ! Unpack 
         associate(&
             celldata    => ggtmdata%cell,   &
@@ -19042,8 +19901,46 @@ module ggmod_gridgeneration2D
             end if 
         end do  
         istp = topomesh%vert%type == TMvertextp2ID
-        call Unique([pack([(k, k = 1, vert%ntot)], isalignedvert .and. isvesselvert), &
-            pack([(k, k = 1, topomesh%vert%ntot)], istp)], splitvertID)
+        if (donarrow) then
+            ! The new plasma-void interfaces end on the vessel but need not
+            ! share a retained material face. Split the vessel at every final
+            ! grid boundary vertex that lies geometrically on it, so both edge
+            ! sets use exactly the same endpoint IDs.
+            allocate(boundaryvert(vert%ntot))
+            boundaryvert = .false.
+            do i = 1, face%ntot
+                if (face%BF(i)) boundaryvert(face%vert(i, :)) = .true.
+            end do
+            allvert = pack([(k, k = 1, vert%ntot)], boundaryvert)
+            allocate(wallval(size(allvert)))
+            wallval = huge(1.0_R8)
+            do i = 1, size(allvert)
+                mx = vert%x(allvert(i))
+                my = vert%y(allvert(i))
+                do j = 1, size(plfv%xp1)
+                    dx = plfv%xp2(j) - plfv%xp1(j)
+                    dy = plfv%yp2(j) - plfv%yp1(j)
+                    seglen2 = dx*dx + dy*dy
+                    if (seglen2 <= walltol*walltol) cycle
+                    proj = ((mx-plfv%xp1(j))*dx + &
+                        (my-plfv%yp1(j))*dy)/seglen2
+                    proj = max(0.0_R8, min(1.0_R8, proj))
+                    dist2 = (mx-(plfv%xp1(j)+proj*dx))**2 + &
+                        (my-(plfv%yp1(j)+proj*dy))**2
+                    wallval(i) = min(wallval(i), dist2)
+                end do
+            end do
+            allvert = pack(allvert, wallval <= walltol*walltol)
+            call Unique([allvert, &
+                pack([(k, k = 1, topomesh%vert%ntot)], istp)], &
+                splitvertID)
+            deallocate(allvert, boundaryvert, wallval)
+        else
+            call Unique([pack([(k, k = 1, vert%ntot)], &
+                isalignedvert .and. isvesselvert), &
+                pack([(k, k = 1, topomesh%vert%ntot)], istp)], &
+                splitvertID)
+        end if
         allocate(issplitvert(topomesh%vert%ntot))
         issplitvert = .false. 
         where (splitvertID <= topomesh%vert%ntot) issplitvert(splitvertID) = .true. 
@@ -19128,6 +20025,144 @@ module ggmod_gridgeneration2D
         deallocate(isvoidedge)
         allocate(isvoidedge(size(tempvoidplf%xp1)))
         isvoidedge = .true. 
+        if (donarrow) then
+            ! GGTMData describes the grid before elemental tubes are removed.
+            ! For a narrow grid, determine vessel coverage from the retained
+            ! material boundary faces themselves. Grid wall faces are chords
+            ! whose endpoints can span several edges of the exact vessel
+            ! polygon, so a Cartesian point-on-segment test is not valid here.
+            ! Convert every material face to the corresponding shortest
+            ! curvilinear interval on the closed vessel contour instead.
+            if (.not. any(isvesselface)) then
+                call gdErrorHandler( &
+                    'ComputeVoidRegionPolygonSet: narrow grid has no ' // &
+                    'retained material target faces')
+            end if
+            allocate(vessellength(size(plfv%xp1)), &
+                vesselstart(size(plfv%xp1)+1), &
+                materialstart(count(isvesselface)), &
+                materiallength(count(isvesselface)))
+            vessellength = sqrt((plfv%xp2-plfv%xp1)**2 + &
+                (plfv%yp2-plfv%yp1)**2)
+            vesselstart(1) = 0.0_R8
+            do i = 1, size(vessellength)
+                vesselstart(i+1) = vesselstart(i) + vessellength(i)
+            end do
+            perimeter = vesselstart(size(vesselstart))
+            if (perimeter <= walltol) then
+                call gdErrorHandler( &
+                    'ComputeVoidRegionPolygonSet: invalid vessel perimeter')
+            end if
+
+            k = 0
+            do j = 1, face%ntot
+                if (.not. isvesselface(j)) cycle
+                k = k + 1
+
+                ! Project the first material-face endpoint onto the exact
+                ! vessel contour and record its arclength coordinate.
+                mx = vert%x(face%vert(j, 1))
+                my = vert%y(face%vert(j, 1))
+                bestdist2 = huge(1.0_R8)
+                s1 = 0.0_R8
+                do i = 1, size(plfv%xp1)
+                    dx = plfv%xp2(i) - plfv%xp1(i)
+                    dy = plfv%yp2(i) - plfv%yp1(i)
+                    seglen2 = dx*dx + dy*dy
+                    if (seglen2 <= walltol*walltol) cycle
+                    proj = ((mx-plfv%xp1(i))*dx + &
+                        (my-plfv%yp1(i))*dy)/seglen2
+                    proj = max(0.0_R8, min(1.0_R8, proj))
+                    dist2 = (mx-(plfv%xp1(i)+proj*dx))**2 + &
+                        (my-(plfv%yp1(i)+proj*dy))**2
+                    if (dist2 < bestdist2) then
+                        bestdist2 = dist2
+                        s1 = vesselstart(i) + proj*vessellength(i)
+                    end if
+                end do
+                if (bestdist2 > walltol*walltol) then
+                    call gdErrorHandler( &
+                        'ComputeVoidRegionPolygonSet: material face endpoint ' // &
+                        'is not on the vessel contour')
+                end if
+
+                ! Same projection for the second endpoint.
+                mx = vert%x(face%vert(j, 2))
+                my = vert%y(face%vert(j, 2))
+                bestdist2 = huge(1.0_R8)
+                s2 = 0.0_R8
+                do i = 1, size(plfv%xp1)
+                    dx = plfv%xp2(i) - plfv%xp1(i)
+                    dy = plfv%yp2(i) - plfv%yp1(i)
+                    seglen2 = dx*dx + dy*dy
+                    if (seglen2 <= walltol*walltol) cycle
+                    proj = ((mx-plfv%xp1(i))*dx + &
+                        (my-plfv%yp1(i))*dy)/seglen2
+                    proj = max(0.0_R8, min(1.0_R8, proj))
+                    dist2 = (mx-(plfv%xp1(i)+proj*dx))**2 + &
+                        (my-(plfv%yp1(i)+proj*dy))**2
+                    if (dist2 < bestdist2) then
+                        bestdist2 = dist2
+                        s2 = vesselstart(i) + proj*vessellength(i)
+                    end if
+                end do
+                if (bestdist2 > walltol*walltol) then
+                    call gdErrorHandler( &
+                        'ComputeVoidRegionPolygonSet: material face endpoint ' // &
+                        'is not on the vessel contour')
+                end if
+
+                delta = modulo(s2-s1, perimeter)
+                if (delta <= 0.5_R8*perimeter) then
+                    materialstart(k) = s1
+                    materiallength(k) = delta
+                else
+                    materialstart(k) = s2
+                    materiallength(k) = perimeter-delta
+                end if
+            end do
+
+            ! Retain precisely those vessel sub-edges that are not underneath
+            ! any final material face. Their midpoints are already guaranteed
+            ! to lie on the exact vessel polygon constructed above.
+            do i = 1, size(tempvoidplf%xp1)
+                mx = 0.5_R8*(tempvoidplf%xp1(i) + &
+                    tempvoidplf%xp2(i))
+                my = 0.5_R8*(tempvoidplf%yp1(i) + &
+                    tempvoidplf%yp2(i))
+                bestdist2 = huge(1.0_R8)
+                smid = 0.0_R8
+                do j = 1, size(plfv%xp1)
+                    dx = plfv%xp2(j) - plfv%xp1(j)
+                    dy = plfv%yp2(j) - plfv%yp1(j)
+                    seglen2 = dx*dx + dy*dy
+                    if (seglen2 <= walltol*walltol) cycle
+                    proj = ((mx-plfv%xp1(j))*dx + &
+                        (my-plfv%yp1(j))*dy)/seglen2
+                    proj = max(0.0_R8, min(1.0_R8, proj))
+                    dist2 = (mx-(plfv%xp1(j)+proj*dx))**2 + &
+                        (my-(plfv%yp1(j)+proj*dy))**2
+                    if (dist2 < bestdist2) then
+                        bestdist2 = dist2
+                        smid = vesselstart(j) + proj*vessellength(j)
+                    end if
+                end do
+                if (bestdist2 > walltol*walltol) then
+                    call gdErrorHandler( &
+                        'ComputeVoidRegionPolygonSet: temporary vessel edge ' // &
+                        'is not on the vessel contour')
+                end if
+                do j = 1, size(materialstart)
+                    if (modulo(smid-materialstart(j), perimeter) <= &
+                        materiallength(j)+walltol) then
+                        isvoidedge(i) = .false.
+                        exit
+                    end if
+                end do
+            end do
+            deallocate(vessellength, vesselstart, materialstart, &
+                materiallength)
+        else
         do i = 1, topomesh%cell%ntot
             ! Unpack cell data
             associate(&
@@ -19470,6 +20505,7 @@ module ggmod_gridgeneration2D
             ! Housekeeping
             end associate
         end do
+        end if
 
         ! Construct the actual polygon set - note: we need to use the 
         ! labels to get the correct vertex IDs here
@@ -19481,6 +20517,31 @@ module ggmod_gridgeneration2D
         allocate(voidedgevID(size(voidedgevID1), 2))
         voidedgevID(:, 1) = voidedgevID1
         voidedgevID(:, 2) = voidedgevID2 
+        if (donarrow .and. (size(voidedgevID, 1) > 0)) then
+            if (any(voidedgevID <= 0)) then
+                call gdErrorHandler( &
+                    'ComputeVoidRegionPolygonSet: invalid narrow void edge ID')
+            end if
+            allocate(voiddegree(maxval(voidedgevID)))
+            voiddegree = 0
+            do i = 1, size(voidedgevID, 1)
+                voiddegree(voidedgevID(i, 1)) = &
+                    voiddegree(voidedgevID(i, 1)) + 1
+                voiddegree(voidedgevID(i, 2)) = &
+                    voiddegree(voidedgevID(i, 2)) + 1
+            end do
+            if (any(modulo(voiddegree, 2_I8) /= 0)) then
+                print *, 'ComputeVoidRegionPolygonSet: narrow void graph has ', &
+                    count(modulo(voiddegree, 2_I8) /= 0), &
+                    ' odd-degree endpoint(s)'
+                call gdErrorHandler( &
+                    'ComputeVoidRegionPolygonSet: narrow void boundary is open')
+            end if
+            print *, 'ComputeVoidRegionPolygonSet: narrow void graph closed; ', &
+                size(voidedgevID, 1), ' edges, ', &
+                count(isvesselface), ' material faces'
+            deallocate(voiddegree)
+        end if
         call voidps%Construct(voidedgevID, [vert%x, plfv%xp], [vert%y, plfv%yp])
 
         ! Orient (only if polygon present)

@@ -650,6 +650,11 @@ module goatmod_userinput
         real(R8)                        :: maxdist
         logical                         :: refine
         integer(I8), allocatable        :: TP(:), TPind(:), exclude(:)
+        integer(I8), allocatable        :: solpslimitertarget(:)
+        integer(I8), allocatable        :: solpslowdivinnertarget(:)
+        integer(I8), allocatable        :: solpslowdivoutertarget(:)
+        integer(I8), allocatable        :: solpsupdivinnertarget(:)
+        integer(I8), allocatable        :: solpsupdivoutertarget(:)
 
         ! Vessel representation options
         character(:), allocatable       :: shapemeth 
@@ -1002,7 +1007,8 @@ module goatmod_userinput
             extendtptubes, extendvesseltubes, refdlBLlengthbased, &
             radrefdlBLlengthbased, vdrdoxp, structurebasedlabels, &
             dogriddiagnostics, evtnoBL, refBLdostructure, &
-            forceSOLPStopology, vdrdosp
+            forceSOLPStopology, vdrdosp, &
+            solpstargetrefinements
         integer(I8)                 :: gcresx, gcresy, &
             verbosity, orthtracernsteps, refBLnctarget, refBLncvessel, &
             radrefBLncsp, refBLncstructure
@@ -1355,6 +1361,17 @@ module goatmod_userinput
         options%TP      = [1, 2]
         options%TPind   = [1, 2]
 
+        ! SOLPS limiter target segments (empty by default; required
+        ! non-empty for SOLPS limiter grids)
+        allocate(options%solpslimitertarget(0))
+
+        ! SOLPS divertor target segments (empty by default; consumed
+        ! by the SOLPS region assignment of divertor topologies)
+        allocate(options%solpslowdivinnertarget(0))
+        allocate(options%solpslowdivoutertarget(0))
+        allocate(options%solpsupdivinnertarget(0))
+        allocate(options%solpsupdivoutertarget(0))
+
         ! Vessel shape representation
         allocate(character(len('closedpolygon_smoothapproximation')) :: &
             options%shapemeth)
@@ -1525,6 +1542,7 @@ module goatmod_userinput
         options%reflengthtype   = 'euler'   
         options%refLBdoxp       = .true. 
         options%refLBdovessel   = .false. 
+        options%solpstargetrefinements = .false. 
         options%refLBLmininf    = 0.0_R8
         options%refLBLmaxinf    = 100 ! some absurd big number
         options%refLBLminxp     = 0.0_R8
@@ -2295,6 +2313,37 @@ module goatmod_userinput
         call ExtractOptionValueInteger1D(fid, field, options%TP)
         field = 'goat.vessel.TPind'
         call ExtractOptionValueInteger1D(fid, field, options%TPind)
+        field = 'goat.vessel.solps_limiter_target'
+        if (.not. allocated(options%solpslimitertarget)) then
+            allocate(options%solpslimitertarget(0))
+        end if
+        call ExtractOptionValueInteger1D(fid, field, &
+            options%solpslimitertarget)
+        field = 'goat.vessel.solps_lower_divertor_inner_target'
+        if (.not. allocated(options%solpslowdivinnertarget)) then
+            allocate(options%solpslowdivinnertarget(0))
+        end if
+        call ExtractOptionValueInteger1D(fid, field, &
+            options%solpslowdivinnertarget)
+        field = 'goat.vessel.solps_lower_divertor_outer_target'
+        if (.not. allocated(options%solpslowdivoutertarget)) then
+            allocate(options%solpslowdivoutertarget(0))
+        end if
+        call ExtractOptionValueInteger1D(fid, field, &
+            options%solpslowdivoutertarget)
+        field = 'goat.vessel.solps_upper_divertor_inner_target'
+        if (.not. allocated(options%solpsupdivinnertarget)) then
+            allocate(options%solpsupdivinnertarget(0))
+        end if
+        call ExtractOptionValueInteger1D(fid, field, &
+            options%solpsupdivinnertarget)
+        field = 'goat.vessel.solps_upper_divertor_outer_target'
+        if (.not. allocated(options%solpsupdivoutertarget)) then
+            allocate(options%solpsupdivoutertarget(0))
+        end if
+        call ExtractOptionValueInteger1D(fid, field, &
+            options%solpsupdivoutertarget)
+
 
         ! Shape representation options
         field = 'goat.vessel.shapemeth'
@@ -2628,6 +2677,9 @@ module goatmod_userinput
         call ExtractOptionValueReal1D(fid, field, options%refLBLmaxstructure)
         field  = 'gg.ref.LB.decaylengthstructure'
         call ExtractOptionValueReal1D(fid, field, options%refLBdecaylengthstructure)
+        field  = 'gg.ref.solps_target_refinements'
+        call ExtractOptionValueLogical0D(fid, field, &
+            options%solpstargetrefinements)
         field  = 'gg.ref.LB.structureIDs'   
         call ExtractOptionValueInteger1D(fid, field, options%refLBstructureIDs)
         field  = 'gg.ref.LB.vertIDs'   

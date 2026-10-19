@@ -40,7 +40,10 @@ module ggmod_topology2D
     private 
     public :: TopomeshUDT, ConstructTopologicalMesh, TraceExtrema2D, &
         TraceTangencyPoints2D, ReadTopologicalMesh, WriteTopologicalMesh, &
-        IdentifyTopologicalMeshType
+        IdentifyTopologicalMeshType, &
+        ClassifyBasicSOLPSCatalogTopology, &
+        CountSOLPSXPointSides, &
+        WalkSeparatrixComponent
 
     ! Module parameters
     real(R8), parameter, private        :: tprelfieldtol = 1e-14 ! relative field tolerance under which extrema are removed
@@ -16206,6 +16209,352 @@ module ggmod_topology2D
         end if 
 
     end function
+
+    ! SOLPS catalog topology classification
+    subroutine ClassifyBasicSOLPSCatalogTopology(topomesh, label, &
+        orient, excludedxp)
+
+        ! Description
+        !============
+        ! Classify the topological mesh into one of the BASIC
+        ! SOLPS/B2.5 topology families, named after the geometry IDs
+        ! B2.5 knows internally:
+        !   GEOMETRY_LIMITER    - no X-point in the domain
+        !   GEOMETRY_SN         - X-point(s) on one side of the
+        !                         O-point only (orient =
+        !                         'lower'/'upper')
+        !   GEOMETRY_CDN        - X-points on both sides, the two
+        !                         innermost ones connected (same
+        !                         separatrix component)
+        !   GEOMETRY_DDN_BOTTOM - X-points on both sides,
+        !                         disconnected, primary (innermost)
+        !                         X-point below the O-point
+        !   GEOMETRY_DDN_TOP    - as above, primary X-point above
+        !   UNKNOWN             - anything else (no or multiple
+        !                         O-points, no confined region, ...)
+        !
+        ! Method: the domain must contain exactly ONE O-point
+        ! (otherwise UNKNOWN). Of all the X-points in the domain,
+        ! only the innermost one per lower/upper side (smallest flux
+        ! distance from the O-point) is considered: any further
+        ! X-point on a side (snowflake companions, secondary nulls
+        ! further out) does not change the basic family. The
+        ! connectivity between the two per-side candidates is decided
+        ! by a separatrix-component walk (a chain of separatrix
+        ! faces), never by mere flux equality.
+        !
+        ! The optional excludedxp list (topomesh vertex IDs) removes
+        ! X-points from the classification entirely. It is used for
+        ! narrow (target-filtered) grids: a divertor region cut from
+        ! the delivered grid takes its X-point with it, and the
+        ! delivered SOLPS topology is that of the SURVIVING X-points
+        ! only.
+
+        ! Declare variables
+        !==================
+        ! Arguments
+        class(TopomeshUDT)              :: topomesh
+        character(len=64), intent(out)  :: label, orient
+        integer(I8), intent(in), optional   :: excludedxp(:)
+
+        ! Auxiliary
+        integer(I8), allocatable        :: xp(:), op(:), cc(:), &
+            ccf(:), tmpi(:), reach(:), wfaces(:)
+        integer(I8)                     :: nxp, i, ilow, iup
+        real(R8)                        :: yc, fcore, d, dlow, dup
+        logical                         :: ok
+        logical, allocatable            :: keepx(:)
+
+        ! Initialize
+        !===========
+        label = 'UNKNOWN'
+        orient = 'n/a'
+
+        associate(vert => topomesh%vert, cell => topomesh%cell)
+
+        ! Global structure checks
+        !========================
+        ! At most one O-point (the magnetic axis) may be in the
+        ! domain: two or more mean a doublet/island plasma, outside
+        ! the basic families
+        op = topomesh%GetOPointIDs()
+        if (size(op) > 1) then
+            call setunknown('more than one O-point in the domain')
+            return
+        end if
+
+        ! A confined region must exist
+        cc = topomesh%GetCoreCellIDs()
+        if (size(cc) == 0) then
+            call setunknown('no confined region (core) in the domain')
+            return
+        end if
+
+        ! Reference center and core-side flux value: from the O-point
+        ! vertex when the core is meshed through the axis, otherwise
+        ! (core clipped at an inner flux surface, so the axis is not
+        ! a topomesh vertex) from the core-cell centroid and the
+        ! core boundary faces
+        if (size(op) == 1) then
+            yc = vert%y(op(1))
+            fcore = vert%fval(op(1))
+        else
+            allocate(tmpi(0))
+            do i = 1, size(cc)
+                tmpi = [tmpi, cell%GetVert(cc(i))]
+            end do
+            yc = sum(vert%y(tmpi))/real(size(tmpi), kind=R8)
+            deallocate(tmpi)
+            ccf = topomesh%GetCoreFaceIDs()
+            if (size(ccf) == 0) then
+                call setunknown('no O-point in the domain and no ' // &
+                    'core boundary faces to take the core flux from')
+                return
+            end if
+            fcore = 0.0_R8
+            do i = 1, size(ccf)
+                fcore = fcore + &
+                    0.5_R8*(vert%fval(topomesh%face%vert(ccf(i), 1)) + &
+                            vert%fval(topomesh%face%vert(ccf(i), 2)))
+            end do
+            fcore = fcore/real(size(ccf), kind=R8)
+        end if
+
+        ! Innermost X-point per side
+        !===========================
+        ! Innermost = smallest flux distance from the O-point;
+        ! sides = below/above the O-point
+        xp = topomesh%GetXPointIDs()
+        if (present(excludedxp)) then
+            if ((size(excludedxp) > 0) .and. (size(xp) > 0)) then
+                allocate(keepx(size(xp)))
+                do i = 1, size(xp)
+                    keepx(i) = .not. any(excludedxp == xp(i))
+                end do
+                xp = pack(xp, keepx)
+            end if
+        end if
+        nxp = size(xp)
+        if (nxp == 0) then
+            label = 'GEOMETRY_LIMITER'
+            orient = 'n/a'
+            return
+        end if
+        ilow = 0
+        iup = 0
+        dlow = 0.0_R8
+        dup = 0.0_R8
+        do i = 1, nxp
+            d = abs(vert%fval(xp(i)) - fcore)
+            if (vert%y(xp(i)) >= yc) then
+                if ((iup == 0) .or. (d < dup)) then
+                    iup = i
+                    dup = d
+                end if
+            else
+                if ((ilow == 0) .or. (d < dlow)) then
+                    ilow = i
+                    dlow = d
+                end if
+            end if
+        end do
+
+        ! Classification
+        !===============
+        if (iup == 0) then
+
+            ! X-point(s) at the lower side only
+            label = 'GEOMETRY_SN'
+            orient = 'lower'
+
+        elseif (ilow == 0) then
+
+            ! X-point(s) at the upper side only
+            label = 'GEOMETRY_SN'
+            orient = 'upper'
+
+        else
+
+            ! X-points at both sides: connected or disconnected
+            ! double null, from the separatrix component of the two
+            ! innermost X-points
+            call WalkSeparatrixComponent(topomesh, xp(ilow), reach, &
+                wfaces, ok)
+            if (.not. ok) then
+                call setunknown('separatrix component walk failed')
+                return
+            end if
+            if (any(reach == xp(iup))) then
+                label = 'GEOMETRY_CDN'
+                orient = 'connected'
+            elseif (dlow <= dup) then
+                label = 'GEOMETRY_DDN_BOTTOM'
+                orient = 'primary lower'
+            else
+                label = 'GEOMETRY_DDN_TOP'
+                orient = 'primary upper'
+            end if
+
+        end if
+
+        end associate
+
+    contains
+
+        ! Set the UNKNOWN label with a printed reason
+        subroutine setunknown(reason)
+            character(*), intent(in)    :: reason
+            label = 'UNKNOWN'
+            orient = 'n/a'
+            print *, 'ClassifyBasicSOLPSCatalogTopology: UNKNOWN ' // &
+                'topology: ' // reason
+        end subroutine
+
+    end subroutine
+
+    ! Count the X-points below/above the O-point
+    subroutine CountSOLPSXPointSides(topomesh, nbelow, nabove)
+
+        ! Description
+        !============
+        ! Count the saddle vertices below and above the O-point (the
+        ! O-point vertex when the axis is meshed, otherwise the
+        ! core-cell vertex centroid) - the same side convention as
+        ! ClassifyBasicSOLPSCatalogTopology. Returns zeros when there are
+        ! no X-points or no reference (no O-point and no core cells).
+
+        ! Declare variables
+        !==================
+        ! Arguments
+        class(TopomeshUDT)              :: topomesh
+        integer(I8), intent(out)        :: nbelow, nabove
+
+        ! Auxiliary
+        integer(I8), allocatable        :: xp(:), op(:), cc(:), tcv(:)
+        real(R8)                        :: yc
+        integer(I8)                     :: i, k
+
+        ! Count
+        !======
+        nbelow = 0
+        nabove = 0
+        xp = topomesh%GetXPointIDs()
+        if (size(xp) == 0) return
+        op = topomesh%GetOPointIDs()
+        if (size(op) >= 1) then
+            yc = topomesh%vert%y(op(1))
+        else
+            cc = topomesh%GetCoreCellIDs()
+            if (size(cc) == 0) return
+            yc = 0.0_R8
+            k = 0
+            do i = 1, size(cc)
+                tcv = topomesh%cell%GetVert(cc(i))
+                yc = yc + sum(topomesh%vert%y(tcv))
+                k = k + size(tcv)
+            end do
+            yc = yc/real(k, kind=R8)
+        end if
+        do i = 1, size(xp)
+            if (topomesh%vert%y(xp(i)) >= yc) then
+                nabove = nabove + 1
+            else
+                nbelow = nbelow + 1
+            end if
+        end do
+
+    end subroutine
+
+    ! Walk the separatrix component of one X-point
+    subroutine WalkSeparatrixComponent(topomesh, ixp, reach, wfaces, &
+        ok)
+
+        ! Description
+        !============
+        ! Walk all separatrix-face chains emanating from the saddle
+        ! vertex ixp: follow each branch through regular vertices
+        ! until another saddle, a terminal vertex (wall strike), or a
+        ! loop back to the start is reached. Returns the saddle
+        ! vertex IDs reached (including ixp itself for closed loops)
+        ! and the list of walked separatrix faces (the part of ixp's
+        ! level-set component traced through the domain).
+
+        ! Declare variables
+        !==================
+        ! Arguments
+        class(TopomeshUDT)                      :: topomesh
+        integer(I8), intent(in)                 :: ixp
+        integer(I8), allocatable, intent(out)   :: reach(:), wfaces(:)
+        logical, intent(out)                    :: ok
+
+        ! Auxiliary
+        logical, allocatable                    :: visited(:)
+        integer(I8), allocatable                :: tf(:), branch(:), &
+            nxtf(:)
+        integer(I8)                             :: ib, f, vcur, vnxt
+
+        ! Initialize
+        !===========
+        ok = .true.
+        allocate(reach(0), wfaces(0))
+        allocate(visited(topomesh%face%ntot))
+        visited = .false.
+
+        associate(vert => topomesh%vert, face => topomesh%face)
+
+        ! Separatrix branches emanating from the X-point
+        tf = vert%GetFace(ixp)
+        branch = pack(tf, face%type(tf) == TMfacesepID)
+
+        ! Walk each branch
+        !=================
+        do ib = 1, size(branch)
+            f = branch(ib)
+            if (visited(f)) cycle
+            vcur = ixp
+            do while (.true.)
+                visited(f) = .true.
+                wfaces = [wfaces, f]
+
+                ! Step to the other end of the face
+                if (face%vert(f, 1) == vcur) then
+                    vnxt = face%vert(f, 2)
+                elseif (face%vert(f, 2) == vcur) then
+                    vnxt = face%vert(f, 1)
+                else
+                    ok = .false.
+                    exit
+                end if
+
+                ! Chain termination checks
+                if ((vnxt == ixp) .or. &
+                    (vert%type(vnxt) == TMvertexsaddleID)) then
+                    ! Reached a saddle (possibly back to the start)
+                    reach = [reach, vnxt]
+                    exit
+                end if
+
+                ! Continue along the unique next separatrix face
+                nxtf = vert%GetFace(vnxt)
+                nxtf = pack(nxtf, (face%type(nxtf) == TMfacesepID) &
+                    .and. (.not. visited(nxtf)))
+                if (size(nxtf) == 0) then
+                    ! Terminal vertex (wall strike or clipped end)
+                    exit
+                elseif (size(nxtf) > 1) then
+                    ! Non-saddle separatrix junction: unexpected
+                    ok = .false.
+                    exit
+                end if
+                vcur = vnxt
+                f = nxtf(1)
+            end do
+            if (.not. ok) exit
+        end do
+
+        end associate
+
+    end subroutine
 
     ! Topological metric computations
     subroutine GetTMFacePsiValueDistribution(topomesh, fieldtracer, &

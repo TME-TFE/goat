@@ -85,6 +85,11 @@ VERSION 1.00.00
 'goat.vessel.TP'                    '[1, 2]'
 'goat.vessel.TPind'                 '[1, 2]'
 
+# SOLPS divertor targets (lower single null: inner = struct 2, outer = struct 1;
+# required by the new GOAT primary-strike guard).
+'goat.vessel.solps_lower_divertor_inner_target'   '[2]'
+'goat.vessel.solps_lower_divertor_outer_target'   '[1]'
+
 # Structures to be excluded when constructing vessel (if empty, all are included)
 'goat.vessel.exclude'               '[]'
 

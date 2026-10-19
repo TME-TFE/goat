@@ -90,7 +90,7 @@ goat: $(addprefix $(BUILDDIR)/, $(GOAT_TARGETS)) $(BUILDDIR)/goat.o
 	$(FC) $(LFLAGS) -o $(BUILDDIR)/$(EXEC_NAME) $(BUILDDIR)/*.o $(LAPACKPATH) $(BLASPATH) $(UMFPACKPATH) $(DMUMPS_LPATH) $(CXSparsePATH) -lcxsparse \
 	$(SUITESPARSEPATH) -I src/Clayer/Include $(DMUMPS_IPATH); 
 	rm $(BUILDDIR)/Goat.o; 
-	cp $(BUILDDIR)/$(EXEC_NAME) ./executables/.
+	rm -f ./executables/$(EXEC_NAME); cp $(BUILDDIR)/$(EXEC_NAME) ./executables/.
 
 goat_debug: goat
 
@@ -100,14 +100,14 @@ tests: $(addprefix $(BUILDDIR)/,$(TEST_TARGETS) ) $(BUILDDIR)/tests.o
 	$(FC) $(LFLAGS) -o $(BUILDDIR)/tests.exe $(BUILDDIR)/*.o $(LAPACKPATH) $(BLASPATH) $(UMFPACKPATH) $(DMUMPS_LPATH) $(CXSparsePATH) -lcxsparse \
 	$(SUITESPARSEPATH) -I src/Clayer/Include
 	rm $(BUILDDIR)/tests.o; 
-	cp $(BUILDDIR)/tests.exe ./executables/.
+	rm -f ./executables/tests.exe; cp $(BUILDDIR)/tests.exe ./executables/.
 
 testc: $(addprefix $(BUILDDIR)/,$(CTEST_TARGETS) ) $(BUILDDIR)/testc.o 
 	-mv -f *.o $(BUILDDIR);  
 	-mv -f *.mod $(BUILDDIR); 
 	$(CC) -o $(BUILDDIR)/testc.exe $(BUILDDIR)/*.o $(CXSparsePATH) -lcxsparse $(SUITESPARSEPATH) -I src/Clayer/Include
 	rm $(BUILDDIR)/Testc.o; 
-	cp $(BUILDDIR)/testc.exe ./executables/.
+	rm -f ./executables/testc.exe; cp $(BUILDDIR)/testc.exe ./executables/.
 
 shapeopt: $(addprefix $(BUILDDIR)/, $(SHAPEOPT_TARGETS) ) $(BUILDDIR)/shapeopt.o 
 	-mv -f *.o $(BUILDDIR);  
@@ -121,7 +121,7 @@ else
 	$(SUITESPARSEPATH) -I src/Clayer/Include
 endif
 	rm $(BUILDDIR)/ShapeOptimization.o; 
-	cp $(BUILDDIR)/$(EXEC_NAME) ./executables/.
+	rm -f ./executables/$(EXEC_NAME); cp $(BUILDDIR)/$(EXEC_NAME) ./executables/.
 
 shapeopt_debug: shapeopt
 

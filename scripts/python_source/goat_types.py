@@ -1621,4 +1621,3 @@ class GridInterpolant2D:
 
         # Return 
         return vq
-

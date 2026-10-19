@@ -139,7 +139,9 @@ subroutine GGGDDriver(goatoptions)
     !==================
     call GenerateUnstructuredAlignedGrid(grid, topomesh, magneticField, &
         environment%vessel, fieldtracer, vesseltracer, streamlinetracer, &
-        ggoptions, ggtmdataopt=ggtmdata)
+        ggoptions, ggtmdataopt=ggtmdata, &
+        restrictwallcontacttotargets=&
+            topomeshoptions%removewidegridregions)
 
     ! Apply grid deformation
     !=======================

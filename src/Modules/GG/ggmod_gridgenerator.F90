@@ -299,7 +299,8 @@ contains
             gridgenerator%topomesh, gridgenerator%magneticField, &
             gridgenerator%environment%vessel, gridgenerator%fieldtracer, &
             gridgenerator%boundarytracer, gridgenerator%streamlinetracer, &
-            gridgenerator%ggoptions)
+            gridgenerator%ggoptions, restrictwallcontacttotargets=&
+                gridgenerator%topomeshoptions%removewidegridregions)
 
         ! Set logicals
         gridgenerator%hasgrid = .true. 
@@ -486,4 +487,4 @@ contains
     end subroutine 
 
 
-end module 
+end module

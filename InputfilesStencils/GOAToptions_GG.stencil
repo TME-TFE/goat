@@ -1,0 +1,262 @@
+#=========================================================================#
+#                                                                         #
+#                           GOATOPTIONS                                   #
+#                         GRID GENERATION                                 #
+#=========================================================================#
+# General options
+'goat.debug'                        '0'
+'goat.meth'                         'GG'
+
+# Input file locations 
+'goat.gridfilepath'                 'XXXXXXXX' # for ex. traduit.out.b2us
+'goat.magneticfieldfilepath'        'XXXXXX' # either the rzpsi.dat or the .equ file
+'goat.structurefilepath'            '' # the structure.dat file containing the points defining the vessel
+'goat.GDinputfilepath'              'GOAToptions.dat'
+
+# Output file locations 
+'goat.writefilepath'                ''  # for ex. traduit.out.b2us
+
+# Output options 
+'goat.write_final'                  '1'
+'goat.write_traduitb2us'            '1'
+
+# Switches to identify case
+#'goat.vesselmode'                   '0'
+#'goat.slab'                         '0'
+#'goat.artificial_slab'              '0'
+
+# OMP/IMP
+'goat.OMP_r'                        '[0, 0]'
+'goat.OMP_z'                        '[0, 0]'
+'goat.IMP_r'                        '[0, 0]'
+'goat.IMP_z'                        '[0, 0]'
+
+#-------------------------------------------------------------------------#
+#                          GRID OPTIONS                                   #
+#-------------------------------------------------------------------------#
+# Read method 
+'goat.grid.readmeth'                'traduitb2us' 
+
+# Grid type
+'goat.grid.type'                    'plasma'
+
+#-------------------------------------------------------------------------#
+#                          MAGNETIC FIELD OPTIONS                         #
+#-------------------------------------------------------------------------#
+# Read method
+'goat.mf.readmeth'                  'XXX' # equ or rzpsi (NO DOTS, i.e. no .equ nor rzpsi.dat)
+
+# Interpolation options
+'goat.mf.interpC'                   '3'
+'goat.mf.interpM'                   '6'
+'goat.mf.interpmeth'                'uniformgrid'
+'goat.mf.reinterpolate'             '1'
+'goat.mf.resx'                      '100'
+'goat.mf.resy'                      '100'
+
+#-------------------------------------------------------------------------#
+#                          VESSEL STRUCTURE OPTIONS                       #
+#-------------------------------------------------------------------------#
+# Environment (including vessel etc) options 
+# Vessel geometry & reading method
+'goat.vessel.readmeth'          'read_structure'
+
+# Refinement options for vessel
+'goat.vessel.refinevessel'          '1'
+'goat.vessel.maxvesseldist'         '1e-3'
+'goat.vessel.minreffac'             '0'
+
+# Target plate definition
+'goat.vessel.TP'                    '[2, 4]'
+'goat.vessel.TPind'                 '[1, 2]'
+
+# Structures to be excluded when constructing vessel (if empty, all are included)
+'goat.vessel.exclude'               '[]'
+
+# Vessel field description (similar to magnetic field interpolant, 
+# but for vessel - only used for vessel distance penalty, and if shape
+# method is the same, also used for boundary constraints)
+'goat.vessel.shapemeth'             'closedpolygon_exact'
+'goat.vessel.resx'                  '50'
+'goat.vessel.resy'                  '400'
+'goat.vessel.offsetfracx'           '0.1'
+'goat.vessel.offsetfracy'           '0.1'
+'goat.vessel.interpC'               '3'
+'goat.vessel.interpM'               '6'
+
+#-------------------------------------------------------------------------#
+#                          ADDITIONAL DATA                                #
+#-------------------------------------------------------------------------#
+# OMP and IMP
+'goat.data.OMPr'                '[0.95 1.3]'
+'goat.data.OMPz'                '[0 0]'
+'goat.data.IMPr'                '[0.6 0.75]'
+'goat.data.IMPz'                '[0 0]'
+
+# Data
+#'goat.mf.RBtor'                '-0.8340078592300453'
+
+#-------------------------------------------------------------------------#
+#                         TOPOLOGICAL MESH OPTIONS                        #
+#-------------------------------------------------------------------------#
+
+# Read exising file? 
+'gg.tm.readexistingTM'          '0' # if set to 1 avoids generating again the topology and reads the existing one. Might spare some tens of seconds of execution time
+'gg.tm.TMfilepath'              './output/topomesh.dat' # default
+
+# Magnetic field: tracing & resolution (description is determined by GD options)
+'gg.tm.field.resx'              '100'
+'gg.tm.field.resy'              '100'
+'gg.tm.field.donewton'          '1'
+'gg.tm.fieldtol'                '1e-8'
+
+# Tangency point tangency point treatment 
+'gg.tm.dotpvesselbased'         '0' # best used in combination with vessel refinement
+
+# Vessel contour tracing (vessel description is determined by GD options)
+'gg.tm.vessel.resx'             '400'
+'gg.tm.vessel.resy'             '400'
+'gg.tm.vessel.donewton'         '0'
+
+'gg.tm.contour.npmin'           '10'
+'gg.tm.contour.npmax'           '10000'
+'gg.tm.contour.dl'              '0.0075'
+
+# Core boundary and region treatment
+'gg.tm.doadaptations'           '1'
+'gg.tm.addcoreboundaries'       '1'
+'gg.tm.addPFboundaries'         '0'
+'gg.tm.cbnd.frac'               '0.1'
+'gg.tm.PFbnd.frac'              '0.1'
+'gg.tm.removecoreregions'       '1'
+'gg.tm.removewidegridregions'   '0'
+'gg.tm.mergetangencypointtubes' '1'
+'gg.tm.dpsimintangencypointtubes' '0.0'
+'gg.tm.lradmintangencypointtubes' '2.0e-3'
+
+'gg.tm.alignvesselparts'        '1'
+'gg.tm.avpmaxvesseldist'        '2.0e-3'
+'gg.tm.mergeavptubes'           '0'
+'gg.tm.mergetubes' '1'
+'gg.tm.lradmintubes' '5e-3'
+
+#-------------------------------------------------------------------------#
+#                         VERTEX DISTRIBUTION OPTIONS                     #
+#-------------------------------------------------------------------------#
+# General options
+'gg.verbosity'                          '1'
+'gg.vertexconstructionmethod'           'orthogonal'
+'gg.TMcellgriddingorder'                'sequential'
+'gg.cellconstructionmethod'             'quads_triangles'
+'gg.ref.readexistingrefdata'            '0'
+
+# adaptations
+'gg.adap.extendtptubes'                 '1'
+'gg.adap.extendvesseltubes'             '1'
+'gg.adap.evt.maxvessellength'           '0.1'
+
+
+# Refinement options
+'gg.ref.meth'                           'lengthbased'
+#'gg.ref.meth'                           'no'
+'gg.ref.LB.doxp'                        '1'
+'gg.ref.LB.dovessel'                    '1'
+'gg.ref.LB.Lmininf'                     '0.002'
+'gg.ref.LB.Lmaxinf'                     '0.05'
+'gg.ref.LB.structureIDs'                '[1]'
+'gg.ref.LB.Lminstructure'               '[0.01, 0.01]'
+'gg.ref.LB.Lmaxstructure'               '[0.025, 0.025]'
+'gg.ref.LB.decaylengthstructure'        '[0.25, 0.25]'
+'gg.ref.LB.Lminxp'                      '0.01'
+'gg.ref.LB.Lmaxxp'                      '0.05'
+'gg.ref.LB.decaylengthxp'               '0.2'
+
+# Refinement options
+'gg.radref.meth'                           'lengthbased'
+#'gg.radref.meth'                           'no'
+'gg.radref.LB.lengthtype'                   'radial'
+'gg.radref.LB.dosp'                        '0'
+
+# Options for psi length type 
+#'gg.radref.LB.Lmininf'                     '0.1'
+#'gg.radref.LB.Lmaxinf'                     '0.5'
+#'gg.radref.LB.Lminsp'                      '0.05'
+#'gg.radref.LB.Lmaxsp'                      '0.12'
+#'gg.radref.LB.decaylengthsp'               '0.5'
+
+# Options for (radial) length type 
+'gg.radref.LB.Lmininf'                     '0.010'
+'gg.radref.LB.Lmaxinf'                     '1000.0'
+'gg.radref.LB.Lminsp'                      '0.04'
+'gg.radref.LB.Lmaxsp'                      '0.10'
+'gg.radref.LB.decaylengthsp'               '0.5'
+
+
+# Boundary layer options (only for length based refinement for now)
+'gg.ref.BL.dotarget'                  '0'
+'gg.ref.BL.nctarget'                  '7'
+'gg.ref.BL.dltarget'                  '[0.002, 0.003, 0.004, 0.006, 0.008, 0.012, 0.016]'
+'gg.ref.BL.dovessel'                  '0'
+'gg.ref.BL.ncvessel'                  '7'
+'gg.ref.BL.dlvessel'                  '[0.002, 0.003, 0.004, 0.006, 0.008, 0.012, 0.016]'
+'gg.ref.BL.dllengthbased'             '1'
+
+# 'Boundary' layer options for radial direction
+'gg.radref.BL.dosp'                '0'
+'gg.radref.BL.ncsp'                '6'
+'gg.radref.BL.dlsp'                '[0.0010, 0.0015, 0.002, 0.003, 0.0045, 0.0067]'
+'gg.radref.BL.dllengthbased'       '0'
+
+
+'gg.ref.BL.dostructure'               '1'
+'gg.ref.BL.structureID'               '[1, 3, 4]'
+'gg.ref.BL.ncstructure'               '4'
+'gg.ref.BL.dlstructure'               '[0.003, 0.004, 0.005, 0.006]'
+
+# Post-processing options
+'gg.vd.removefluxsurfaces'              '1' # Remove too narrow flux surfaces
+'gg.vd.removenarrowboundarytriangles'   '1' # Remove too narrow triangles at boundary and replace by cut cells
+
+# Contour resolution 
+'gg.vd.contouring.resx'         '400'
+'gg.vd.contouring.resy'         '400'
+'gg.vd.contouring.coarsen'      '1'
+
+# Orthogonal line tracer options (only if orthogonal based GG is used)
+'gg.vd.orthlinetracing.step'    '5' # relative step size (larger = less accurate but faster)
+'gg.vd.orthlinetracing.nsteps'  '500' # maximal number of steps to take 
+
+# Distribution of flux surfaces (radial)
+'gg.vd.rd.type'                         'densitybased'
+
+# Distribution of vertices on flux surfaces (poloidal)
+'gg.vd.pd.type'                         'uniform'
+
+# Options for uniform distribution
+'gg.vd.pd.distribution.facelength'      '16e-1';
+
+'gg.vd.rd.distribution.fieldwidth'      '8e0';
+
+# Options for density based distribution
+'gg.vd.pd.distribution.plftype'            'target'
+'gg.vd.pd.distribution.decaylengthplf'     '1.00'
+'gg.vd.pd.distribution.densityatvessel' '100'
+'gg.vd.pd.distribution.densityatinf'    '10'
+
+# Options for density based distribution, radial
+'gg.vd.rd.distribution.doxp'            '1'
+'gg.vd.rd.distribution.decaylengthxp'   '0.25';
+'gg.vd.rd.distribution.densityatxp'     '200';
+'gg.vd.rd.distribution.densityatinf'    '50';
+'gg.vd.rd.distribution.points.x'        '[0.92, 0.92]'
+'gg.vd.rd.distribution.points.y'        '[-0.75, 0.75]'
+'gg.vd.rd.distribution.points.val'      '[100, 100]'
+'gg.vd.rd.distribution.points.d'        '[0.1, 0.1]'
+
+# Options for remove narrow boundary triangles
+'gg.vd.rnbt.mark.criterion'             'angle'
+'gg.vd.rnbt.mark.minangle'              '5'
+
+# fcLbl based on structure numbers
+'gg.labels.structurebased'              '1'
+'gg.dogriddiagnostics'                  '1'

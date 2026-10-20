@@ -1,0 +1,471 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage[strings]{underscore}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{microtype}
+
+\definecolor{swgrey}{gray}{0.6}
+\setlength{\parindent}{0pt}
+\titleformat{\section}{\Large\bfseries}{}{0pt}{}
+\titleformat{\subsection}{\large\bfseries\color{black!70}}{}{0pt}{}
+
+% \sw{name}{type}{default}{description}
+\newcommand{\sw}[4]{%
+  \par\vspace{0.7em}%
+  \begin{minipage}{\linewidth}\raggedright
+    \textbf{\texttt{#1}}\hfill\textit{#2}\\[0.1em]
+    \textbf{Default:} #3\\[0.1em]
+    #4\par
+    \vspace{0.3em}{\color{swgrey}\hrule}
+  \end{minipage}\par}
+
+\title{GOAT Input Switches Reference}
+\author{Generated from \texttt{goatmod\_userinput}}
+\date{}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\section*{Notes}
+\begin{itemize}
+  \item Each switch is listed under the key as it appears in the options file (e.g.\ \texttt{goat.debug}). Keys are read by the read routines in the \texttt{goatmod\_userinput} module.
+  \item Types: \emph{integer (0 or 1)} (\texttt{1}/\texttt{0}), \emph{integer}, \emph{real}, \emph{string}, and the array variants (\emph{integer array}, \emph{real array}). Numbers provided in the arrays \textbf{must} be separated by a comma.
+  \item "Empty" means a zero-length array.
+  \item When SOLPS mode is active, the I/O file paths default to the \texttt{solps\_*} paths of \texttt{mod\_global\_environment}. This is in principle available but it is not yet fully supported.
+  \item Discaimer: the switches \texttt{gg.ref.XXX} are meant for poloidal refinement, while \texttt{gg.radref.XXX} are meant for radial refinement. Ideally speaking, \texttt{gg.ref.XXX} would be equilvalent to \texttt{gg.polref.XXX}.
+\end{itemize}
+
+%======================================================================
+\section{GOAT -- General}
+%======================================================================
+\subsection*{General}
+\sw{goat.debug}{integer (0 or 1)}{\texttt{0}}{If set to \texttt{1} and the \texttt{goat_debug} execuatable is run, it provides extra screen output.}
+\sw{goat.meth}{string}{\texttt{`GG'}}{GOAT running method. Currently, only \texttt{`GG'} (Grid Generation) is supported. Users can select \texttt{`GD'} for Grid Deformation or \texttt{`GA'} for Grid Adaptation, yet those are not fully mature/supported.}
+
+%======================================================================
+\section{GOAT -- Environment}
+%======================================================================
+\sw{goat.readstate}{integer (0 or 1)}{\texttt{0}}{Read the plasma state.}
+\sw{goat.readstatemeth}{string}{\texttt{`b2fplasmf'}}{Method to read the state; can be \texttt{`b2fstate'} or \texttt{`b2fplasmf'}.}
+\sw{goat.statefilepath}{string}{\texttt{`./b2fplasmf'} (SOLPS: \texttt{solps\_statefilepath})}{State file to read.}
+
+
+\subsection*{Input file names}
+\sw{goat.gridfilepath}{string}{\texttt{`./traduit.out.b2us'} (SOLPS: \texttt{solps\_gridfilepath})}{File path to the file with grid data (e.g.\ the \texttt{traduit.out.b2us} file).}
+\sw{goat.structurefilepath}{string}{\texttt{`./structure.dat'} (SOLPS: \texttt{solps\_structurefilepath})}{The \texttt{structure.dat} file to read.}
+\sw{goat.magneticfieldfilepath}{string}{\texttt{`./rzpsi.dat'} (SOLPS: \texttt{solps\_magneticfieldfilepath})}{Magnetic field file to read.}
+\sw{goat.GDinputfilepath}{string}{\texttt{`./GOAToptions.dat'}}{Path towards the file where the options for grid deformation are defined.}
+
+\subsection*{Output options}
+\sw{goat.writefilepath}{string}{\texttt{`traduit.out.b2us'} (SOLPS: \texttt{solps\_writefilepath})}{Path where the output traduit file is written.}
+\sw{goat.write_final}{integer (0 or 1)}{\texttt{1}}{Write final output.}
+\sw{goat.write_traduitb2us}{integer (0 or 1)}{\texttt{1}}{Write unstructured traduit file.}
+\sw{goat.write_b2agdat}{integer (0 or 1)}{\texttt{1}}{Write final \texttt{b2ag.dat} file for use in b2ag.}
+\sw{goat.write_OMPdata}{integer (0 or 1)}{\texttt{0}}{Write OMP data in the traduit file.}
+\sw{goat.write_topologicaldata}{integer (0 or 1)}{\texttt{0}}{Write out X-, O-, and strike point information, and other topological data.}
+
+\subsection*{Case identification (TO BE CHECKED)}
+\sw{goat.vesselmode}{integer (0 or 1)}{\texttt{0}}{Set to true if the case is a vessel mode grid.}
+\sw{goat.slab}{integer (0 or 1)}{\texttt{0}}{True if slab grid.}
+\sw{goat.artificial_slab}{integer (0 or 1)}{\texttt{0}}{True if artificial slab.}
+
+\subsection*{Face label mappings}
+Those are only required when working with GD and GA.
+\sw{goat.facelabelmappingGG}{integer array}{empty}{Labels as defined in the grid generator. Must have the same length as \texttt{goat.facelabelmappingGA}.}
+\sw{goat.facelabelmappingGD}{integer array}{empty}{Corresponding labels for GD (the first GG label is mapped to the first GD label here).}
+\sw{goat.facelabelmappingGA}{integer array}{empty}{Corresponding labels for GA (the first GG label is mapped to the first GA label here).}
+\sw{goat.facelabelsubfrom}{integer array}{empty}{Substitution of this face label \dots}
+\sw{goat.facelabelsubto}{integer array}{empty}{\dots\ to this face label in the GA to GD interface.}
+
+\subsection*{OMP and IMP definition}
+\sw{goat.OMP_r}{real array (2)}{\texttt{[0, 0]}}{R coordinates that define the outer mid plane line segment.}
+\sw{goat.OMP_z}{real array (2)}{\texttt{[0, 0]}}{Z coordinates that define the outer mid plane line segment.}
+\sw{goat.IMP_r}{real array (2)}{\texttt{[0, 0]}}{R coordinates that define the inner mid plane line segment.}
+\sw{goat.IMP_z}{real array (2)}{\texttt{[0, 0]}}{Z coordinates that define the inner mid plane line segment.}
+
+
+%======================================================================
+\section{GOAT -- Grid}
+%======================================================================
+\sw{goat.grid.type}{string}{\texttt{`plasma'}}{The type of grid that is considered. Only \texttt{`plasma'} is currently available.}
+\sw{goat.grid.readmeth}{string}{\texttt{`b2fgmtry'}}{The type of input file. Can be \texttt{`b2fgmtry'} or \texttt{`traduitb2us'}. Both are unstructured.}
+
+%======================================================================
+\section{GOAT -- Magnetic Field}
+%======================================================================
+\sw{goat.mf.readmeth}{string}{\texttt{`default'}}{Method to read in the magnetic field data. Only \texttt{`readrzpsi'} and \texttt{`default'} are supported for now; both use the \texttt{readrzpsi} routine.}
+\sw{goat.mf.interpC}{integer}{\texttt{3}}{Desired continuity of the interpolant.}
+\sw{goat.mf.interpM}{integer}{\texttt{6}}{Order of the interpolant describing the values at the grid nodes.}
+\sw{goat.mf.interpmeth}{string}{\texttt{`uniformgrid'}}{Interpolant method: \texttt{`uniformgrid'} for data given on a uniform grid, \texttt{`centered'} for default non-uniform grids.}
+\sw{goat.mf.reinterpolate}{integer (0 or 1)}{\texttt{0}}{Reinterpolate the magnetic field for a different resolution defined by \texttt{goat.mf.resx} and \texttt{goat.mf.resy}.}
+\sw{goat.mf.resx}{integer}{\texttt{100}}{Resolution in x-direction for reinterpolation.}
+\sw{goat.mf.resy}{integer}{\texttt{100}}{Resolution in y-direction for reinterpolation.}
+\sw{goat.mf.RBtor}{real}{\texttt{0}}{Product of toroidal magnetic field and major radius (assumed constant here) in [Tm]. Note: this value can be signed, the sign indicating positive or negative toroidal direction of the magnetic field.
+The direction is not important for GOAT purposes, and it is completely related to the final application of the grid: e.g., for a SOLPS-ITER grid, a positive value provided here will end up in a positive B field in SOLPS-ITER coordinate system.}
+
+%======================================================================
+\section{GOAT -- Vessel}
+%======================================================================
+\sw{goat.vessel.readmeth}{string}{\texttt{`read\_structure'}}{\texttt{'read\_structure'} for \texttt{structure.dat} files. This is the only method currently supported.}
+\sw{goat.vessel.exclude}{integer array}{empty}{List of structures in the vessel to be excluded from the vessel (indices must be the same as in \texttt{structure.dat}; those are also excluded when generating the bounding polygon).}
+\sw{goat.vessel.refinevessel}{integer (0 or 1)}{\texttt{0}}{Set to true to refine the vessel (insert more nodes).}
+\sw{goat.vessel.maxvesseldist}{real}{\texttt{0.01}}{Maximum distance between two nodes. If larger, nodes are added in between when refinement is enabled.}
+\sw{goat.vessel.minreffac}{integer}{\texttt{0}}{Minimal refinement factor for each edge. If zero, no effect. The value plus one gives the minimal number of edges into which each edge is split.}
+\sw{goat.vessel.TP}{integer array}{\texttt{[1, 2]}}{Indices of which part of the structure should be considered as target plates. This should not account for structures excluded with \texttt{goat.vessel.exclude}.}
+\sw{goat.vessel.TPind}{integer array}{\texttt{[1, 2]}}{Target plate enumerators.}
+\sw{goat.vessel.shapemeth}{string}{\texttt{`closedpolygon\_smoothapproximation'}}{Method used to represent (and possibly approximate) the shape of the vessel.}
+\sw{goat.vessel.resx}{integer}{\texttt{100}}{Resolution in x-direction for the shape representation.}
+\sw{goat.vessel.resy}{integer}{\texttt{100}}{Resolution in y-direction for the shape representation.}
+\sw{goat.vessel.interpC}{integer}{\texttt{3}}{Only used for interpolant-based methods. Continuity order of the interpolant.}
+\sw{goat.vessel.interpM}{integer}{\texttt{6}}{Only used for interpolant-based methods. Order used to approximate derivatives to construct the interpolant function.}
+\sw{goat.vessel.offsetfracx}{real}{\texttt{0.1}}{Fractional offset to be taken from the minimal and maximal x-value of the original vessel polygon.}
+\sw{goat.vessel.offsetfracy}{real}{\texttt{0.1}}{Same as \texttt{offsetfracx}, but for the y-direction.}
+\sw{goat.vessel.xrange}{real array}{empty}{Only used for interpolant-based methods. Range over which the interpolant can be evaluated (determined by max and min value in the array; may be overwritten).}
+\sw{goat.vessel.yrange}{real array}{empty}{Same as \texttt{xrange}, for the y-direction.}
+
+\newpage
+%======================================================================
+\section{Grid Generation (GG)}
+%======================================================================
+%======================================================================
+\subsection*{General}
+%======================================================================
+\sw{gg.verbosity}{integer}{\texttt{1}}{The higher, the more information is printed (0 suppresses all).}
+\sw{gg.vertexconstructionmethod}{string}{\texttt{`independent'}}{How to construct the grid: \texttt{`independent'} treats each flux surface independently; \texttt{`orthogonal'} yields a largely orthogonal grid but needs dependency between mesh cells.}
+\sw{gg.cellconstructionmethod}{string}{\texttt{`quads\_triangles'}}{Method to determine grid cells starting from a given vertex distribution. \texttt{`quads\_triangles'} is recommended.}
+\sw{gg.legalcellstyle}{string}{\texttt{`graph'}}{How to check that cells are legal. \texttt{`no'}: no checks; \texttt{`old'}: deprecated method that catches most issues but not all; anything else: graph-based method, likely more expensive but captures all cell-overlap cases.}
+\sw{gg.TMcellgriddingorder}{string}{\texttt{`sequential'}}{Order in which to grid the topological mesh cells: \texttt{`independent'} (essentially random) or \texttt{`sequential'} (recommended; initial distributions are propagated through).}
+\sw{gg.dogriddiagnostics}{integer (0 or 1)}{\texttt{1}}{Run grid diagnostics (time consuming).}
+
+\subsection*{Topological Mesh (Topomesh)}
+\subsubsection*{I/O}
+\sw{gg.tm.readexistingTM}{integer (0 or 1)}{\texttt{0}}{Read an existing topomesh file, whose full path is defined in \texttt{gg.tm.TMfilepath}.}
+\sw{gg.tm.readexistingtracers}{integer (0 or 1)}{\texttt{0}}{Read existing field and vessel tracers instead of constructing new ones; only when restarting the topomesh from a previous one. Paths are given in \texttt{gg.tm.TMfieldtracerfilepath} and \texttt{gg.tm.TMvesseltracerfilepath}.}
+\sw{gg.tm.writedebugoutput}{integer (0 or 1)}{\texttt{0}}{Write (many) more intermediate topomesh files for visual debugging.}
+\sw{gg.tm.TMfilepath}{string}{\texttt{`topomesh.dat'}}{Full path of the topomesh file to read.}
+\sw{gg.tm.TMfieldtracerfilepath}{string}{\texttt{`./output/TMfieldtracer.dat'}}{Full path of the field tracer file.}
+\sw{gg.tm.TMvesseltracerfilepath}{string}{\texttt{`./output/TMvesseltracer.dat'}}{Full path of the vessel tracer file.}
+
+\subsection*{Resolution and contouring}
+\sw{gg.tm.field.resx}{integer}{\texttt{100}}{Resolution in x for 2D tracing of contours and extrema of the field.}
+\sw{gg.tm.field.resy}{integer}{\texttt{100}}{Resolution in y for 2D tracing of contours and extrema of the field.}
+\sw{gg.tm.vessel.resx}{integer}{\texttt{100}}{Same as field resolution, but for the vessel (x).}
+\sw{gg.tm.vessel.resy}{integer}{\texttt{100}}{Same as field resolution, but for the vessel (y).}
+\sw{gg.tm.contour.npmin}{integer}{\texttt{10}}{Minimal number of points of contours (when coarsening).}
+\sw{gg.tm.contour.npmax}{integer}{\texttt{10000}}{Maximal number of points of contours (when coarsening).}
+\sw{gg.tm.contour.dl}{real}{\texttt{1e-3}}{Desired uniform edge length.}
+
+\subsection*{Refinement of extrema}
+\sw{gg.tm.field.donewton}{integer (0 or 1)}{\texttt{1}}{Refine extrema of the field with a Newton solver (may not always converge).}
+\sw{gg.tm.vessel.donewton}{integer (0 or 1)}{\texttt{1}}{Same, for the vessel.}
+\sw{gg.tm.fieldtol}{real}{\texttt{1e-8}}{Tolerance on field value of extrema: if the difference is below the tolerance, two extrema are considered to have exactly the same field value.}
+\sw{gg.tm.dotpvesselbased}{integer (0 or 1)}{\texttt{0}}{Do tangency point determination purely based on the current vessel polygons.}
+
+\subsection*{Adaptations}
+\sw{gg.tm.doadaptations}{integer (0 or 1)}{\texttt{1}}{General switch to apply adaptations to the basic topological mesh (core/PF boundaries, optional region removal, tube merging, \dots).}
+\sw{gg.tm.addcoreboundaries}{integer (0 or 1)}{\texttt{1}}{Add additional core boundaries.}
+\sw{gg.tm.addPFboundaries}{integer (0 or 1)}{\texttt{1}}{Add additional private-flux-like boundaries (at tangency points of which the contour does not enter the vessel).}
+\sw{gg.tm.removecoreregions}{integer (0 or 1)}{\texttt{1}}{Remove the innermost core regions.}
+\sw{gg.tm.removewidegridregions}{integer (0 or 1)}{\texttt{1}}{Remove all regions that are not next to a separatrix.}
+\sw{gg.tm.removenoncoreregions}{integer (0 or 1)}{\texttt{0}}{Remove non-core regions.}
+\sw{gg.tm.cbnd.frac}{real}{\texttt{0.2}}{Fraction in field value between the core and the connecting X-point (1: tangency point, 0: other PF boundary, e.g.\ separatrix).}
+\sw{gg.tm.PFbnd.frac}{real}{\texttt{0.2}}{Fraction in field value between the outer PF boundary and the tangency point.}
+
+\subsection*{Tube merging and separatrix simplification}
+\sw{gg.tm.mergetubes}{integer (0 or 1)}{\texttt{0}}{Apply general tube merging.}
+\sw{gg.tm.mergetubes.meth}{string}{\texttt{`extensive'}}{Method to merge tubes: \texttt{`extensive'} considers several tubes at once and often gives nicer tubes, but may fail to merge when cycles are present in the tube graph; \texttt{`local'} considers only two tubes at a time and can merge more pairs, but may lead to `uglier' tubes.}
+\sw{gg.tm.mergetubes.allowseparatrix}{integer (0 or 1)}{\texttt{0}}{Allow merging over the separatrix in the general merge case.}
+\sw{gg.tm.mergetubes.allowcore}{integer (0 or 1)}{\texttt{0}}{Same as for the separatrix, but for core contours.}
+\sw{gg.tm.mergetubes.allowpf}{integer (0 or 1)}{\texttt{0}}{Same as for the separatrix, but for PF contours.}
+\sw{gg.tm.mergetubes.oldstyle}{integer (0 or 1)}{\texttt{0}}{Use old-style tube merging.}
+\sw{gg.tm.dpsimintubes}{real}{\texttt{0.0}}{Minimal psi difference for topomesh tubes, below which merging is attempted. Zero to ignore.}
+\sw{gg.tm.lradmintubes}{real}{\texttt{0.0}}{Minimal radial length for topomesh tubes, below which merging is attempted. Zero to ignore. (Read twice in the source; harmless.)}
+\sw{gg.tm.simplifyseparatrix}{integer (0 or 1)}{\texttt{0}}{Simplify the separatrix (remove short separatrix faces).}
+\sw{gg.tm.simplifyseparatrix.lpolsepmin}{real}{\texttt{0.0}}{Minimal separatrix face length in poloidal direction. If lower, separatrix faces can be removed during the separatrix simplification step.}
+
+\subsection*{Vessel region removal}
+\sw{gg.tm.removevesselregions}{integer (0 or 1)}{\texttt{0}}{Remove regions that are adjacent to some user-specified vessel region.}
+\sw{gg.tm.rvrvesselIDs}{integer array}{empty}{IDs, as specified in the \texttt{structure.dat} or \texttt{vessel.dat} file, to consider.}
+\sw{gg.tm.rvrfullycovered}{integer (0 or 1)}{\texttt{0}}{If true, a face is only considered if it is fully covered by one (or multiple) defined vessel IDs.}
+\sw{gg.tm.rvrretain}{integer (0 or 1)}{\texttt{0}}{Retain tubes instead of deleting them, and delete all others.}
+\sw{gg.tm.rvrdocascade}{integer (0 or 1)}{\texttt{0}}{Delete not only marked tubes, but also tubes that connect to them (cascade the deletion) in the direction set by \texttt{rvrcascadedir}.}
+\sw{gg.tm.rvrcascadedir}{string}{\texttt{`none'}}{\texttt{`upwards'} for tubes with higher psi value, \texttt{`downwards'} for lower, \texttt{`none'} for no cascade.}
+
+\subsection*{Aligned vessel parts (AVP)}
+\sw{gg.tm.alignvesselparts}{integer (0 or 1)}{\texttt{0}}{Define certain vessel parts as aligned faces with a certain flux surface value and ID. Only certain boundary faces are considered (typically those near type 2 tangency points). Done only after the initial topological mesh construction, as it triggers profound adaptation of the topomesh.}
+\sw{gg.tm.avpminangle}{real}{\texttt{0.0}}{Minimum angle (in degrees) of boundary edges w.r.t.\ the magnetic field. If below, the edge is considered a potential aligned part.}
+\sw{gg.tm.avprefinevessel}{integer (0 or 1)}{\texttt{0}}{(Deprecated) Refine vessel boundaries, similar to full vessel refinement.}
+\sw{gg.tm.avpmaxvesseldist}{real}{\texttt{1e-2} [m]}{(Deprecated) Maximal vessel edge length.}
+\sw{gg.tm.avpminreffac}{integer}{\texttt{0}}{(Deprecated) Minimal refinement factor for vessel edge refinement.}
+
+\subsubsection*{Label translation}
+\sw{gg.labels.structurebased}{integer (0 or 1)}{\texttt{0}}{Base labels on structure IDs.}
+\sw{gg.labels.forceSOLPStopology}{integer (0 or 1)}{\texttt{0}}{Force a certain topology for region translation etc.}
+\sw{gg.labels.SOLPStopology}{string}{empty string}{Desired topology: \texttt{`general'}, \texttt{`linear'}, \texttt{`limiter'}, \texttt{`single\_null'}, \texttt{`double\_null'}.}
+
+\subsubsection*{Contouring and streamline tracing}
+\sw{gg.vd.contouring.resx}{integer}{\texttt{100}}{Contouring resolution in x within the grid generator.}
+\sw{gg.vd.contouring.resy}{integer}{\texttt{100}}{Contouring resolution in y within the grid generator.}
+\sw{gg.vd.contouring.coarsen}{integer (0 or 1)}{\texttt{0}}{Coarsen contours.}
+\sw{gg.vd.orthlinetracing.step}{real}{\texttt{0.5}}{Step size of the orthogonal streamline tracer.}
+\sw{gg.vd.orthlinetracing.nsteps}{integer}{\texttt{2000}}{Number of steps of the orthogonal streamline tracer.}
+
+\subsubsection*{Poloidal vertex distribution}
+\sw{gg.vd.pd.type}{string}{\texttt{`densitybased'}}{\texttt{`uniform'} for a uniform distribution; \texttt{`densitybased'} for a non-uniform distribution based on a predefined node density distribution function.}
+\sw{gg.vd.pd.distribution.plftype}{string}{\texttt{`target'}}{Type of attraction at the plasma-facing location for the density-based distribution.}
+\sw{gg.vd.pd.distribution.facelength}{real}{\texttt{4e-2}}{Face length for the \texttt{`uniform'} distribution.}
+\sw{gg.vd.pd.distribution.decaylengthplf}{real}{\texttt{0.05}}{Decay length from the vessel for the \texttt{`densitybased'} option.}
+\sw{gg.vd.pd.distribution.decaylengthxp}{real}{\texttt{0.05}}{Decay length from the X-point for the \texttt{`densitybased'} option.}
+\sw{gg.vd.pd.distribution.vdpdincludexp}{integer (0 or 1)}{\texttt{0}}{Include X-points as attraction points.}
+\sw{gg.vd.pd.distribution.points.x}{real array}{empty}{x coordinates of additional attraction points (\texttt{`densitybased'} option).}
+\sw{gg.vd.pd.distribution.points.y}{real array}{empty}{y coordinates of additional attraction points.}
+\sw{gg.vd.pd.distribution.points.d}{real array}{empty}{Decay lengths of additional attraction points.}
+\sw{gg.vd.pd.distribution.points.val}{real array}{empty}{Desired density at the additional attraction points.}
+\sw{gg.vd.pd.distribution.densityatvessel}{real}{\texttt{250.0}}{Desired density at the vessel boundary.}
+\sw{gg.vd.pd.distribution.densityatxp}{real}{\texttt{250.0}}{Desired density at the X-point.}
+\sw{gg.vd.pd.distribution.densityatinf}{real}{\texttt{10.0}}{Desired density far from the vessel boundary.}
+
+\subsubsection*{Radial vertex distribution}
+\sw{gg.vd.rd.type}{string}{\texttt{`uniform'}}{Same options as the poloidal type (\texttt{`uniform'} or \texttt{`densitybased'}).}
+\sw{gg.vd.rd.distribution.doxp}{integer (0 or 1)}{\texttt{0}}{Include X-points (for refinement in the core region).}
+\sw{gg.vd.rd.distribution.dosp}{integer (0 or 1)}{\texttt{1}}{Include strike points (for refinement near targets).}
+\sw{gg.vd.rd.distribution.fieldwidth}{real}{\texttt{4e-3}}{Desired field width for the uniform distribution.}
+\sw{gg.vd.rd.distribution.facelength}{real}{\texttt{0.01}}{Desired face length for the uniform distribution.}
+\sw{gg.vd.rd.distribution.decaylengthxp}{real}{\texttt{0.005}}{Decay length parameter at the X-point.}
+\sw{gg.vd.rd.distribution.densityatxp}{real}{\texttt{2500.0}}{Desired density at the separatrix / X-point.}
+\sw{gg.vd.rd.distribution.decaylengthsp}{real}{\texttt{0.1}}{Decay length parameter at the strike points.}
+\sw{gg.vd.rd.distribution.densityatsp}{real}{\texttt{1000.0}}{Desired density at the strike points.}
+\sw{gg.vd.rd.distribution.densityatinf}{real}{\texttt{250.0}}{Density far from the separatrix.}
+\sw{gg.vd.rd.distribution.points.x}{real array}{empty}{x coordinates of additional attraction points.}
+\sw{gg.vd.rd.distribution.points.y}{real array}{empty}{y coordinates of additional attraction points.}
+\sw{gg.vd.rd.distribution.points.d}{real array}{empty}{Decay lengths of additional attraction points.}
+\sw{gg.vd.rd.distribution.points.val}{real array}{empty}{Desired density at the additional attraction points.}
+
+\subsubsection*{Flux tube extension (cut cells)}
+\sw{gg.adap.extendtptubes}{integer (0 or 1)}{\texttt{1}}{Extend tubes at the tangency point side to include (part of) the vessel from both sides of type 1 tangency points.}
+\sw{gg.adap.extendvesseltubes}{integer (0 or 1)}{\texttt{0}}{Extend any tube at the vessel edges that complies with the marking criterion.}
+\sw{gg.adap.evt.maxvessellength}{real}{\texttt{0.2}}{Maximum L2-based vessel segment length before the tube is extended.}
+\sw{gg.adap.evt.noBL}{integer (0 or 1)}{\texttt{1}}{If true, do not apply any boundary layer at extended tubes (typically not desired). Only has effect if boundary layers are applied.}
+
+\subsubsection*{Flux surface removal}
+\sw{gg.vd.removefluxsurfaces}{integer (0 or 1)}{\texttt{1}}{(Deprecated) Remove flux surfaces.}
+\sw{gg.vd.rfs.mark.psitol}{real}{\texttt{1e-4}}{(Deprecated) Absolute tolerance for the difference in flux value between flux surfaces (if below, one is removed).}
+\sw{gg.vd.rfs.mark.psirattol}{real}{\texttt{1e-1}}{(Deprecated) Maximal ratio between flux surface differences (and inverse); if above/below, one is removed.}
+
+\subsubsection*{Boundary triangle removal}
+\sw{gg.vd.removenarrowboundarytriangles}{integer (0 or 1)}{\texttt{1}}{Remove narrow boundary triangles.}
+\sw{gg.vd.rnbt.mark.criterion}{string}{\texttt{`angle'}}{Criterion for removal; typically \texttt{`angle'} (if too small, remove the triangle).}
+\sw{gg.vd.rnbt.mark.minangle}{real}{\texttt{15$\cdot\pi/180$} (rad)}{Minimal angle (too small: removed). The source comment states the input is in degrees, but the default is set in radians.}
+
+\subsubsection*{Small face removal}
+\sw{gg.vd.removefaces}{integer (0 or 1)}{\texttt{0}}{Remove small faces.}
+\sw{gg.vd.rf.criterion}{string}{\texttt{`facelength\_radial\_bnd'}}{Criterion to remove faces. Typically \texttt{`facelength\_radial\_bnd'} to remove too narrow radial faces at the boundary.}
+\sw{gg.vd.rf.minlength}{real}{\texttt{2e-3} [m]}{Minimal length of these faces.}
+
+%======================================================================
+\subsection*{Boundary layer (BL) refinement}
+%======================================================================
+\sw{gg.ref.meth}{string}{\texttt{`no'}}{Refinement method: \texttt{`no'} (no additional refinement) or \texttt{`lengthbased'} (based on min and max length distributions).}
+\sw{gg.ref.LB.lengthtype}{string}{\texttt{`euler'}}{Which type of length to consider: \texttt{`euler'} is the classical Eulerian length (L2 norm); \texttt{`radial'} is projected in radial direction (absolute value taken).}
+\sw{gg.ref.readexistingrefdata}{integer (0 or 1)}{\texttt{0}}{Read existing refinement data from \texttt{gg.ref.refdatafile}.}
+\sw{gg.ref.refdatafile}{string}{\texttt{`'./output/refdataTM.dat'}}{Refinement data file.}
+\sw{gg.ref.BL.dotarget}{integer (0 or 1)}{\texttt{0}}{Do BL refinement at targets.}
+\sw{gg.ref.BL.dovessel}{integer (0 or 1)}{\texttt{0}}{Do BL refinement at far vessel boundaries.}
+\sw{gg.ref.BL.dostructure}{integer (0 or 1)}{\texttt{0}}{Do BL refinement on user-specified structures.}
+\sw{gg.ref.BL.nctarget}{integer}{\texttt{0}}{Number of desired boundary layer cells at the target.}
+\sw{gg.ref.BL.ncvessel}{integer}{\texttt{0}}{Number of desired boundary layer cells at the vessel.}
+\sw{gg.ref.BL.ncstructure}{integer}{\texttt{0}}{Number of desired boundary layer cells at the structures.}
+\sw{gg.ref.BL.dltarget}{real array}{empty (fill value \texttt{0.001} [m])}{Desired lengths of the BL cells at the target.}
+\sw{gg.ref.BL.dlvessel}{real array}{empty (fill value \texttt{0.01} [m])}{Desired lengths of the BL cells at the vessel.}
+\sw{gg.ref.BL.dlstructure}{real array}{empty (fill value \texttt{0.001} [m])}{Desired lengths of the BL cells at the structures.}
+\sw{gg.ref.BL.dllengthbased}{integer (0 or 1)}{not set by defaults}{Desired length is specified in classic Euler length or not (if not, the length type is taken).}
+\sw{gg.ref.BL.structureID}{integer array}{empty}{Structure-based BL: the structure labels (as specified in the input structure file) at which refinement should be done.}
+
+\subsection*{Length-based refinement (based on exponential decay functions defined in points)}
+%======================================================================
+\subsubsection*{Poloidal Refinement}
+%======================================================================
+\sw{gg.ref.LB.doxp}{integer (0 or 1)}{\texttt{1}}{Refine near X-points (X-points are added).}
+\sw{gg.ref.LB.dovessel}{integer (0 or 1)}{\texttt{0}}{Refine near (specified) vessel vertices.}
+\sw{gg.ref.LB.Lmininf}{real}{\texttt{0.0}}{Minimal length at infinity [m].}
+\sw{gg.ref.LB.Lmaxinf}{real}{\texttt{100}}{Maximal length at infinity [m].}
+\sw{gg.ref.LB.Lminxp}{real}{\texttt{0.0}}{Minimal length at the X-point [m].}
+\sw{gg.ref.LB.Lmaxxp}{real}{\texttt{100}}{Maximal length at the X-point [m].}
+\sw{gg.ref.LB.decaylengthxp}{real}{\texttt{0.1}}{Decay length at the X-point (larger: wider influence) [m].}
+\sw{gg.ref.LB.Lminstructure}{real array}{empty}{Minimal length on structure $i$ (similar for vertices) [m].}
+\sw{gg.ref.LB.Lmaxstructure}{real array}{empty}{Maximal length on structure $i$ [m].}
+\sw{gg.ref.LB.decaylengthstructure}{real array}{empty}{Decay length on structure $i$ [m].}
+\sw{gg.ref.LB.structureIDs}{integer array}{empty}{Structure IDs of vessel structures to include.}
+\sw{gg.ref.LB.vertIDs}{integer array}{empty}{Vessel vertex IDs of vessel vertices to include, as specified in the \texttt{structure.dat} file (some may not be included if deleted during vessel polygon construction).}
+\sw{gg.ref.LB.points.x}{real array}{empty}{x coordinates of points $k$ at which poloidal refinement distribution functions are specified.}
+\sw{gg.ref.LB.points.y}{real array}{empty}{y coordinates of the points.}
+\sw{gg.ref.LB.points.d}{real array}{empty}{Decay lengths at the points [m].}
+\sw{gg.ref.LB.points.Lmin}{real array}{empty}{Desired minimal lengths at the points [m].}
+\sw{gg.ref.LB.points.Lmax}{real array}{empty}{Desired maximal lengths at the points [m].}
+
+%======================================================================
+\subsection*{Radial Refinement}
+%======================================================================
+\sw{gg.radref.meth}{string}{\texttt{`no'}}{Radial refinement method (same options as the poloidal one).}
+\sw{gg.radref.LB.lengthtype}{string}{\texttt{`euler'}}{Type of length to consider (see poloidal option).}
+\sw{gg.radref.LB.dosp}{integer (0 or 1)}{\texttt{1}}{Refine near strike points.}
+\sw{gg.radref.LB.Lmininf}{real}{\texttt{0.0}}{Minimal length at infinity [m].}
+\sw{gg.radref.LB.Lmaxinf}{real}{\texttt{100}}{Maximal length at infinity [m].}
+\sw{gg.radref.LB.Lminsp}{real}{\texttt{0.0}}{Minimal length at the strike point [m].}
+\sw{gg.radref.LB.Lmaxsp}{real}{\texttt{100}}{Maximal length at the strike point [m].}
+\sw{gg.radref.LB.decaylengthsp}{real}{\texttt{0.1}}{Decay length at the strike point (larger: wider influence) [m].}
+\sw{gg.radref.BL.dosp}{integer (0 or 1)}{\texttt{0}}{Do BL refinement at strike points.}
+\sw{gg.radref.BL.ncsp}{integer}{\texttt{0}}{Number of desired boundary layer cells at the strike point.}
+\sw{gg.radref.BL.dlsp}{real array}{empty}{Desired lengths of these cells [m].}
+\sw{gg.radref.BL.dllengthbased}{integer (0 or 1)}{not set by defaults}{Desired length is specified in classic Euler length (1) or not (0). If not, the length type is taken.}
+
+\newpage
+%======================================================================
+\section{Grid Deformation (GD)}
+%======================================================================
+\sw{gd.main.runtype}{string}{\texttt{`optimize'}}{Type of run for grid deformation. Currently only \texttt{`optimize'} is available; may be extended in the future.}
+\sw{gd.main.gridtype}{string}{\texttt{`plasma'}}{Only available option is plasma edge grid (\texttt{`plasma'}).}
+\sw{gd.main.meth}{string}{\texttt{`KKT'}}{Method to solve the optimization problem when using \texttt{`optimize'} as runtype. Only \texttt{`KKT'} is supported, though augmented Lagrangian is also available.}
+\sw{gd.main.designoptionsfile}{string}{\texttt{`./GOAToptions.dat'}}{File to read design options.}
+\sw{gd.main.gridoptionsfile}{string}{\texttt{`./GOAToptions.dat'}}{File to read grid options.}
+\sw{gd.main.magneticfieldoptionsfile}{string}{\texttt{`./GOAToptions.dat'}}{File to read magnetic field options.}
+\sw{gd.main.numparamsoptionsfile}{string}{\texttt{`./GOAToptions.dat'}}{File to read numerical parameter options.}
+\sw{gd.main.environmentoptionsfile}{string}{\texttt{`./GOAToptions.dat'}}{File to read other environment options.}
+
+\newpage
+%======================================================================
+\section{Grid Adaptation (GA)}
+%======================================================================
+\subsection*{General}
+\sw{ga.plt}{integer (0 or 1)}{\texttt{0}}{Enable general plotting.}
+\sw{ga.plt_qm}{integer (0 or 1)}{\texttt{0}}{Enable plotting of quality metrics.}
+\sw{ga.meth}{string}{\texttt{`simple'}}{Used method: \texttt{`simple'} adapts the grid based on grid metrics; \texttt{`aposteriori'} uses plasma state information.}
+
+\subsection*{Operations: small and stacked triangles}
+\sw{ga.rem_small_trias}{integer (0 or 1)}{\texttt{0}}{Remove small triangles.}
+\sw{ga.cut_off_pol}{real}{\texttt{0.3}}{Threshold for small triangles' poloidal height with respect to the poloidal neighbor.}
+\sw{ga.cut_off_surf}{real}{\texttt{0.05}}{Threshold for small triangles on the surface area with respect to the surface area of its neighbors.}
+\sw{ga.stacked_trias}{integer (0 or 1)}{\texttt{0}}{Apply transformation to stacked triangles.}
+\sw{ga.stacked_trias_checkAR}{integer (0 or 1)}{\texttt{0}}{Select triangles based on their aspect ratio.}
+\sw{ga.stacked_trias_maxAR}{real}{\texttt{10}}{Maximal aspect ratio of a triangle in the stacked triangle transformation.}
+\sw{ga.merge_stacked_trias}{integer (0 or 1)}{\texttt{0}}{Apply merging of stacked triangles which are too skewed.}
+\sw{ga.merge_stacked_trias_angle_threshold}{real}{\texttt{5}}{Threshold angle (in degrees) of a stacked triangle to merge it.}
+\sw{ga.merge_trap_into_stacked}{integer (0 or 1)}{\texttt{1}}{Allow merging a trapezoid into a group of stacked triangles.}
+\sw{ga.stacked_to_cutcell}{integer (0 or 1)}{\texttt{0}}{Apply transformation from stacked triangles to cutcell.}
+\sw{ga.stacked_to_cutcell_nonuniform}{integer (0 or 1)}{\texttt{1}}{Transform to cutcell based on the face length of the aligned faces of the triangles.}
+
+\subsection*{Operations: splitting and merging}
+\sw{ga.splitting}{integer array}{\texttt{[0]}}{Apply splitting of cells (array of switches, one per splitting pass).}
+\sw{ga.merging}{integer array}{\texttt{[0]}}{Apply merging of cells (array of switches, one per merging pass).}
+\sw{ga.pents_to_tria}{integer (0 or 1)}{\texttt{0}}{Transform all remaining pentagons into triangles.}
+\sw{ga.h_rad_threshold}{real}{\texttt{0.01}}{Threshold of radial width of a cell during merging; only smaller cells are considered.}
+\sw{ga.h_rad_core_threshold}{real}{\texttt{0.04}}{Same as \texttt{h\_rad\_threshold}, but only for cells in the core.}
+
+\subsection*{Boundary layer grid (BLG)}
+\sw{ga.BLG}{integer (0 or 1)}{\texttt{0}}{Add a boundary layer at the main targets of a grid.}
+\sw{ga.BLG_n_layers}{integer}{\texttt{0}}{Number of layers of the added boundary layer.}
+\sw{ga.BLG_rescaling_factor}{real}{\texttt{2}}{Size of the boundary layer with respect to the upstream cells.}
+\sw{ga.BLG_smoothing_factors}{real array}{\texttt{[1.2, 1.5]}}{The first number is the threshold ratio of subsequent vertex displacement at which a rescaling needs to be done; the second is the maximal ratio allowed (clip).}
+
+\subsection*{Special operations}
+\sw{ga.rem_stickout_trias}{integer (0 or 1)}{\texttt{0}}{Remove triangles that are connected to the grid via only one face.}
+\sw{ga.rem_trias_tube}{integer (0 or 1)}{\texttt{0}}{Remove flux tubes with only two triangles.}
+\sw{ga.rem_outershell}{integer (0 or 1)}{\texttt{0}}{Remove or merge outer flux tubes with a triangle at both ends.}
+\sw{ga.rem_tube_outershell_threshold}{real}{\texttt{2}}{Threshold to select a flux tube to be merged with its neighboring tube (h\_rad of neighboring tube / h\_rad of boundary tube).}
+\sw{ga.outershell_handling}{string}{\texttt{`merge'}}{Can be \texttt{`remove'} or \texttt{`merge'}.}
+\sw{ga.rem_stickout_quad}{integer (0 or 1)}{\texttt{0}}{Remove quads which are connected to the grid with only one face.}
+\sw{ga.split_noalignedquads}{integer (0 or 1)}{\texttt{1}}{Split quads without aligned faces.}
+
+\subsection*{Splitting options}
+\sw{ga.no_pents}{integer (0 or 1)}{\texttt{1}}{Do not allow pentagons in the final grid.}
+\sw{ga.QTtype}{string}{\texttt{`regular'}}{How to handle radial splitting at inclined boundaries: \texttt{`regular'} just splits a triangle radially; \texttt{`pol-rad'} continues poloidal splitting after the radial split of an inclined boundary face.}
+\sw{ga.split_out}{integer (0 or 1)}{\texttt{0}}{Option to not split pentagons.}
+\sw{ga.splittype}{integer array}{not set by defaults (scalar field \texttt{splittype} defaults to \texttt{`rad'})}{Type of splitting: 1 = radial splitting (reduce radial width of cells); 2 = poloidal splitting (reduce poloidal length of cells).}
+\sw{ga.n_split}{integer array}{\texttt{[20]}}{Number of allowed splitting operations.}
+\sw{ga.typeT}{string}{\texttt{`cutcell'}}{Method to split a triangle: \texttt{`stacked'} splits it into two triangles; \texttt{`cutcell'} into a quad and a triangle.}
+\sw{ga.rad_type}{integer array}{not set by defaults (scalar field \texttt{rad\_type} defaults to \texttt{1})}{Criterion to apply radial splitting (see \texttt{SelectSplitCell}):
+1 \texttt{h\_rad\_psi}: split cells with large psi width;
+2 \texttt{h\_rad}: split cells with large radial width;
+3 \texttt{pol\_flux}: split cells with large poloidal flux estimation based on the \texttt{pol\_flux\_est} distance function;
+4 \texttt{farSOL}: split highly inclined triangles in the far SOL;
+5 \texttt{farSOL\_refinements}: split cells with large psi width in the far SOL;
+6 \texttt{farSOLrefinement\_targets}: split cells with large psi width and low boundary face inclination in the far SOL;
+7 \texttt{no\_aligned\_faces}: split cells without aligned faces;
+8 \texttt{shaved\_off\_tubes}: split cells in a tube which is concavely shaved off.}
+\sw{ga.pol_type}{integer array}{not set by defaults (scalar field \texttt{pol\_type} defaults to \texttt{1})}{Criterion to apply poloidal splitting (see \texttt{SelectSplitCell}):
+1 \texttt{trias\_cvS}: split triangles with largest surface area;
+2 \texttt{h\_pol}: split cells with largest poloidal length;
+3 \texttt{trias\_farSOL}: split triangles with largest surface area in the far SOL;
+4 \texttt{farSOLrefinement\_hpol}: split cells with largest poloidal length in the far SOL;
+5 \texttt{farSOLrefinement\_targets}: split cells in the far SOL with large poloidal length and low inclination at the boundary face.}
+\sw{ga.dist_function_threshold_split}{real}{\texttt{0.9}}{Threshold on the distance function value for selecting a cell to split. The value should be lower than the threshold.}
+\sw{ga.dist_function_threshold_split_wall}{real}{\texttt{0.6}}{Same, for the distance function with respect to the wall.}
+
+\subsection*{Merging options}
+\sw{ga.no_hex}{integer (0 or 1)}{\texttt{1}}{Do not allow hexagonal cells in the final grid.}
+\sw{ga.merge_crit}{integer array}{\texttt{[4]}}{Criterion to select a face over which two cells are merged (see \texttt{SelectMergingFace}):
+1 \texttt{tria\_to\_quad}: merge two triangles into quadrilaterals;
+2 \texttt{min\_area}: merge cells smaller than the mean surface area;
+3 \texttt{h\_pol}: merge cells with too small poloidal length;
+4 \texttt{bias}: merge based on high bias between cells in poloidal direction;
+5 \texttt{pol\_flux}: merge cells with low poloidal flux estimation via the similarly named distance function;
+6 \texttt{h\_rad}: merge cells with psi width smaller than \texttt{h\_rad\_threshold};
+7 \texttt{h\_rad\_core}: merge cells in the core with radial width smaller than \texttt{h\_rad\_core\_threshold};
+8 \texttt{bias\_rad\_farSOL}: merge cells with large radial bias in the far SOL;
+9 \texttt{bias\_rad}: merge cells with large radial bias;
+10 \texttt{skew\_tria}: merge triangles with low inclination and high aspect ratio.}
+\sw{ga.merge_h_pol_factor}{real}{\texttt{1}}{Factor to loosen the merge criterion based on poloidal length.}
+\sw{ga.n_merge}{integer array}{\texttt{[20]}}{Number of merging operations allowed.}
+\sw{ga.merge_bias_limit}{real}{\texttt{5}}{Threshold on bias to merge the cells. A merge is done when the real bias is larger than the threshold.}
+\sw{ga.dist_function_threshold_merge}{real}{\texttt{0.6}}{Threshold on the distance function value for selecting a face to merge over. The value should be lower than the threshold.}
+
+\subsection*{Pentagon options}
+\sw{ga.no_pents_area_merge}{integer (0 or 1)}{\texttt{0}}{Use an area constraint on where pentagons are allowed during merging.}
+\sw{ga.no_pents_area_split}{integer (0 or 1)}{\texttt{0}}{Use an area constraint on where pentagons are allowed during splitting.}
+\sw{ga.no_pents_area_type}{string}{\texttt{`dist\_function'}}{Method to define the area where no pentagons are allowed: \texttt{`coordinates'} uses the min/max R/Z options below to define a box; \texttt{`dist\_function'} uses a distance function (its value should be lower than the split or merge threshold).}
+\sw{ga.no_pents_area_maxR}{real}{\texttt{2.5}}{Maximum R of the box where no pentagons are allowed.}
+\sw{ga.no_pents_area_minR}{real}{\texttt{1}}{Minimum R of the box where no pentagons are allowed.}
+\sw{ga.no_pents_area_maxZ}{real}{\texttt{-0.9}}{Maximum Z of the box where no pentagons are allowed.}
+\sw{ga.no_pents_area_minZ}{real}{\texttt{-2}}{Minimum Z of the box where no pentagons are allowed.}
+
+\subsection*{Distance function options}
+\sw{ga.dist_function}{integer (0 or 1)}{\texttt{1}}{Switch to construct distance functions.}
+\sw{ga.base_func}{string}{\texttt{`exp(-dist/d)'}}{Basic function for the construction of the distance function. Can only be \texttt{`exp(-dist/d)'}.}
+\sw{ga.d_rescale}{real}{\texttt{0.5}}{Rescaling factor for the characteristic length of the distance function.}
+\sw{ga.d_rescale_wall}{real}{\texttt{0.5}}{Same as \texttt{d\_rescale}, but for the wall distance function.}
+\sw{ga.dist_type}{string}{\texttt{`target\_single\_null'}}{Type of distance function: \texttt{`target\_single\_null'} uses targets as reference; \texttt{`target\_to\_vessel'} uses the outer boundary of the mesh as reference; \texttt{`pol\_flux\_est'} uses the separatrix as reference.}
+\sw{ga.dist_type_wall}{string}{\texttt{`target\_to\_vessel'}}{Type of distance function used for the wall distance function (same options as \texttt{ga.dist\_type}).}
+\sw{ga.d_char_type}{string}{\texttt{`min\_Xpoint\_dist'}}{Characteristic length used to construct the distance function: \texttt{`min\_Xpoint\_dist'} (minimal distance between targets and X-point) or \texttt{`max\_Xpoint\_dist'} (maximal distance).}
+\sw{ga.plt_dist_func}{integer (0 or 1)}{\texttt{0}}{Plot the distance functions.}
+
+\subsection*{A posteriori adaptations}
+\sw{ga.vxvol_style}{integer}{\texttt{2}}{Style to interpolate from cell centers to vertices.}
+\sw{ga.apost_interpolation_meth}{string}{\texttt{'barycentric'}}{Interpolation method; can be \texttt{`barycentric'} or \texttt{`finite\_element'}.}
+\sw{ga.apost_interpolationC}{integer}{\texttt{0}}{Level of continuity of the interpolant.}
+\sw{ga.apost_interpolationM}{integer}{\texttt{1}}{Order of the interpolant.}
+\sw{ga.apost_meth}{string}{\texttt{`grad'}}{Method to choose a cell to refine: \texttt{`grad'} (from read state and residual information to a newly adapted grid) or \texttt{`res'} (based on residual information).}
+\sw{ga.apost_use_na}{integer (0 or 1)}{\texttt{0}}{Use state field \texttt{na} to decide which cells to split.}
+\sw{ga.apost_use_ua}{integer (0 or 1)}{\texttt{0}}{Use state field \texttt{ua} to decide which cells to split.}
+\sw{ga.apost_use_te}{integer (0 or 1)}{\texttt{0}}{Use state field \texttt{te} to decide which cells to split.}
+\sw{ga.apost_use_ti}{integer (0 or 1)}{\texttt{0}}{Use state field \texttt{ti} to decide which cells to split.}
+\sw{ga.apost_use_tn}{integer (0 or 1)}{\texttt{0}}{Use state field \texttt{tn} to decide which cells to split.}
+\sw{ga.apost_use_po}{integer (0 or 1)}{\texttt{0}}{Use state field \texttt{po} to decide which cells to split.}
+\sw{ga.apost_use_kt}{integer (0 or 1)}{\texttt{0}}{Use state field \texttt{kt} to decide which cells to split.}
+\sw{ga.apost_use_zt}{integer (0 or 1)}{\texttt{0}}{Use state field \texttt{zt} to decide which cells to split.}
+\sw{ga.apost_use_resco}{integer (0 or 1)}{\texttt{0}}{Use residual \texttt{resco} to decide which cells to split.}
+\sw{ga.apost_use_resmo}{integer (0 or 1)}{\texttt{0}}{Use residual \texttt{resmo} to decide which cells to split.}
+\sw{ga.apost_use_resmt}{integer (0 or 1)}{\texttt{0}}{Use residual \texttt{resmt} to decide which cells to split.}
+\sw{ga.apost_use_reshe}{integer (0 or 1)}{\texttt{0}}{Use residual \texttt{reshe} to decide which cells to split.}
+\sw{ga.apost_use_reshi}{integer (0 or 1)}{\texttt{0}}{Use residual \texttt{reshi} to decide which cells to split.}
+\sw{ga.apost_use_reshn}{integer (0 or 1)}{\texttt{0}}{Use residual \texttt{reshn} to decide which cells to split.}
+\sw{ga.apost_use_respo}{integer (0 or 1)}{\texttt{0}}{Use residual \texttt{respo} to decide which cells to split.}
+\sw{ga.apost_use_reszt}{integer (0 or 1)}{\texttt{0}}{Use residual \texttt{reszt} to decide which cells to split.}
+\sw{ga.apost_use_reskt}{integer (0 or 1)}{\texttt{0}}{Use residual \texttt{reskt} to decide which cells to split.}
+
+\paragraph{Remark.} \texttt{apost\_lambda\_threshold} (default \texttt{3}; cells with length scale per cell width below this threshold are considered for refinement) is documented and has a default, but is not read from the options file.
+\end{document}

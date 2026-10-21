@@ -31,9 +31,9 @@ VERSION 1.00.00
 'goat.write_topologicaldata'        '0'
 
 # Switches to identify case
-'goat.vesselmode'                   '0'
-'goat.slab'                         '0'
-'goat.artificial_slab'              '0'
+#'goat.vesselmode'                   '0'
+#'goat.slab'                         '0'
+#'goat.artificial_slab'              '0'
 
 # OMP/IMP
 'goat.OMP_r'                        '[0, 0]'

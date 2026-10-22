@@ -3739,6 +3739,18 @@ module goatmod_types
                             print *, 'face ID: ', tf
                             print *, 'neighbours: ', tempfcell(tf,:), i
                             print *, 'vert: ', f%vert(tf, 1), f%vert(tf, 2)
+                            print *, 'faces with these vertices:'
+                            print *, pack([(k, k = 1, f%ntot)], &
+                                (f%vert(:, 1) == tv(j) .and. f%vert(:, 2) == tv(k)) .or. &
+                                (f%vert(:, 2) == tv(j) .and. f%vert(:, 1) == tv(k))) 
+                            print *, 'vertices, cell 1: ', GetCellVert(c, i)
+                            print *, 'vertices, cell 2: ', GetCellVert(c, tempfcell(tf, 1))
+                            print *, 'vertices, cell 3: ', GetCellVert(c, tempfcell(tf, 2))
+                            print *, 'The error below is encountered in very exceptional circumstances, ' // & 
+                                'yet which only occur with intersecting cells near closed flux tubes. ' // &
+                                'There, the first vertex may form pathological cells. If so, refine there ' // & 
+                                'locally in the poloidal direction to avoid this'
+                            print *, 'coordinates (approximate): ', v%x(f%vert(tf, 1)), v%y(f%vert(tf, 2))
                             call gdErrorHandler(& 
                             'ComputeGridInterconnections: too many ' &
                                 // 'neighbours for this face')

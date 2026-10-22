@@ -1065,13 +1065,29 @@ module mod_polygon
                         indp2 = i
                     end if 
                     if (indp1 /= 0 .and. indp2 /= 0 .and. ind /= 0) then 
-                        do k = 1, p(i)%nv 
+                        do k = 1, p(indp1)%nv ! will only take first point, not last point as it is the same
                             if (p(indp1)%x(k) == p(indp2)%x(ind) .and. &
                                 p(indp1)%y(k) == p(indp2)%y(ind)) then 
                                 ispointintersection = .true.
+
+                                ! Ensure consistency of iinj and jini: vertices that overlap should be true in both arrays
+                                if (indp1 == i) then 
+                                    jini(ind) = .true. 
+                                    iinj(k) = .true. 
+                                else
+                                    jini(k) = .true. 
+                                    iinj(ind) = .true. 
+                                end if 
+
                             end if 
                         end do 
                     end if  
+
+                    ! Ensure first and last point are the same value since 
+                    ! they're the same vertex. Also, only the first value is changed
+                    ! so this is the reference one. 
+                    jini(size(jini)) = jini(1)
+                    iinj(size(iinj)) = iinj(1)
                     
                     
                     if (ispointintersection) then 
@@ -1093,13 +1109,13 @@ module mod_polygon
                 if (any(jini)) then 
                     if (count(jini) > count(iinj)) then ! generalized to deal with point intersections
                         inpolygonmatrix(i, j) = .true.
-                    else
+                    elseif (count(jini) < count(iinj)) then ! if equal: not in each other, builds on jini and iinj being consistent - fixed above
                         inpolygonmatrix(j, i) = .true.
                     end if 
                 elseif (any(iinj)) then 
                     if (count(iinj) > count(jini)) then ! generalized to deal with point intersections
                         inpolygonmatrix(j, i) = .true.
-                    else
+                    elseif (count(iinj) < count(jini)) then ! if equal: not in each other, builds on jini and iinj being consistent - fixed above
                         inpolygonmatrix(i, j) = .true.
                     end if 
                 end if 

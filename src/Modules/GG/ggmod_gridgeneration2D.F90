@@ -3465,7 +3465,7 @@ module ggmod_gridgeneration2D
                     end if 
                     if (.not. islegalquad) then 
                         alpha3 = posinfval_R8()
-                    end if 
+                    end if                     
                     
                     ! Find face that makes the smallest angle
                     indmin = minloc([alpha1, alpha2, alpha3], 1)
@@ -3606,9 +3606,10 @@ module ggmod_gridgeneration2D
                     tempcellvertP(nc, :) = [ncv+1, 4]
                     ncv = ncv + 4
                 elseif (doquad) then 
+                    print *, 'ConstructGridCellsQuadsTria: code not verified'
                     tempcellvert(ncv+1:ncv+3) = [v1, v2, v4]
                     tempcellvertP(nc, :) = [ncv+1, 3]
-                    ncv = ncv + 2
+                    ncv = ncv + 3 ! used to be + 2, but is wrong? 
                 else
                     tempcellvert(ncv+1:ncv+3) = [v1, v2, v3]
                     tempcellvertP(nc, :) = [ncv+1, 3]
@@ -19776,6 +19777,7 @@ module ggmod_gridgeneration2D
                 s2 = s2(sortindex)
                 x = x(sortindex)
                 y = y(sortindex)
+                deallocate(sortindex)
 
                 ! Determine, based on labels, which vertices are grid
                 ! vertices and which ones are  void vertices

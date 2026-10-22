@@ -418,7 +418,8 @@ module ggmod_topology2D
         class(StreamlineTracerUDT), intent(in)  :: streamlinetracer
 
         ! Auxiliary
-        real(R8)                                :: dxfracmin, dyfracmin
+        real(R8)                                :: dxfracmin, dyfracmin, &
+            dx, dy
         real(R8), allocatable, dimension(:)     :: xb, yb, xps, &
             yps, xg, yg, Vf, xgv, ygv
         real(R8), parameter                     :: emptyR8(0)= 0
@@ -446,6 +447,15 @@ module ggmod_topology2D
         call vessel%plfvessel%ps%GetVertices(xps, yps)
         xb = [minval([xps, magneticField%interp%xgv]), maxval([xps, magneticField%interp%xgv])]
         yb = [minval([yps, magneticField%interp%ygv]), maxval([yps, magneticField%interp%ygv])]
+
+        ! Extend a bit to avoid boundary effects (e.g. tangency points
+        ! lying exactly on the boundary of the magnetic field and vessel)
+        dx = xb(2)-xb(1)
+        xb(1) = xb(1) - dx*0.01_R8 
+        xb(2) = xb(2) + dx*0.01_R8
+        dy = yb(2)-yb(1)
+        yb(1) = yb(1) - dy*0.01_R8 
+        yb(2) = yb(2) + dy*0.01_R8
 
         ! Construct a 2D structured grid for tracing (may be extended
         ! in the future for different grid types)
@@ -1259,7 +1269,9 @@ module ggmod_topology2D
                     dy = ty(2:) - ty(1:size(ty)-1)
                     dl = sqrt(dx**2 + dy**2)
                     ltot = sum(dl)
-                    tfval = fieldtracer%Evaluate(tx, ty)
+                    allocate(tfval(size(tx)))
+                    call magneticField%interp%Evaluate(tx, ty, 0, 0, tfval)
+                    ! tfval = fieldtracer%Evaluate(tx, ty)
                     dtfval = tfval(2:) - tfval(1:size(tfval)-1)
 
                     ! Determine length fraction that is non-monotonous
@@ -1274,6 +1286,7 @@ module ggmod_topology2D
                     end if 
                     frac(j) = sum(dl)/ltot
                     frac(j) = abs((maxval(tfval) - minval(tfval))/abs(tfval(1) - tfval(size(tfval))))
+                    deallocate(tfval)
                 end do 
 
                 ! Keep the one where frac is minimal
@@ -1282,10 +1295,46 @@ module ggmod_topology2D
                 ! Housekeeping 
                 deallocate(frac)
             else
+                ! Check if we should keep this contour
                 ! Mark this contour to be kept
                 keepind(cIDs(i)%Get()) = .true. 
             end if
         end do
+
+        ! Keep only connections that are monotonous in psi values (up to 
+        ! some tolerance...)
+        allocate(frac(1))
+        do i = 1, size(allc)
+            ! Get coordinates etc
+            tx = allc(i)%x
+            ty = allc(i)%y
+            dx = tx(2:) - tx(1:size(tx)-1)
+            dy = ty(2:) - ty(1:size(ty)-1)
+            dl = sqrt(dx**2 + dy**2)
+            ltot = sum(dl)
+            allocate(tfval(size(tx)))
+            call magneticField%interp%Evaluate(tx, ty, 0, 0, tfval)
+            ! tfval = fieldtracer%Evaluate(tx, ty)
+            dtfval = tfval(2:) - tfval(1:size(tfval)-1)
+
+            ! Determine length fraction that is non-monotonous
+            if (tfval(1) > tfval(size(tfval))) then 
+                ! Decreasing, set edge lengths to zero where they
+                ! are aligned
+                where (dtfval >= 0.0_R8) dl = 0.0_R8
+            else
+                ! Increasing, set edge lengths to zero where they
+                ! are aligned
+                where (dtfval <= 0.0_R8) dl = 0.0_R8
+            end if
+            frac(1) =  abs((maxval(tfval) - minval(tfval))/abs(tfval(1) - tfval(size(tfval))))
+            if (frac(1) - 1.0_R8 > 1e-2) then 
+                keepind(i) = .false. 
+            end if  
+            deallocate(tfval)
+
+        end do 
+
 
         ! Introduce contours in topomesh
         do i = 1, size(allc)

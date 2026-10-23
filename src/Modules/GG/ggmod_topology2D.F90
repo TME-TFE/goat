@@ -1006,8 +1006,8 @@ module ggmod_topology2D
                                 print *, 'TraceExtrema2DBox: newton solver did ' // & 
                                 'not converge, taking original estimate'
                             else
-                            tx(k) = tempx
-                            ty(k) = tempy
+                                tx(k) = tempx
+                                ty(k) = tempy
                             end if 
                         else
                             print *, 'TraceExtrema2DBox: newton solver did ' // & 
@@ -8049,6 +8049,7 @@ module ggmod_topology2D
         end if
 
         ! Extract vessel faces (has to be two or zero)
+        allocate(radialbndf(count(face%type(tuberadface) == TMfacebndID)))
         radialbndf = pack(tuberadface, face%type(tuberadface) == TMfacebndID)
 
         ! Sanity checks
@@ -8067,6 +8068,7 @@ module ggmod_topology2D
 
         ! Orden the faces of the tube
         tubefaces = GetClosedPolygonFromTopomeshFaces(topomesh, [radialbndf, allhf, alllf])
+            
 
         ! Extract (sorted) separatrix faces - need to flip one of the two
         ! to have them oriented in the same direction
@@ -8418,24 +8420,30 @@ module ggmod_topology2D
         do i = 1, size(mergevert)
             ! Get faces of vertex
             tvf = topomesh%vert%GetFace(mergevert(i))
+            
+            if (topomesh%vert%type(mergevert(i)) == TMvertexsaddleID) then 
+                ! Saddle point vertex: need to remove non-aligned 
+                ! boundaries that are part of the tube only
+                where (istuberadface(tvf)) remf(tvf) = .true. 
 
-            ! Check if it has a non-aligned face in the current tube 
-            ! and a non-aligned face in the neighbouring tube. If so, 
-            ! don't remove the vertex or it's non-aligned faces
-            allocate(tvfna(0))
-            do j = 1, size(tvf)
-                if (any(topomesh%face%type(tvf(j)) == TMfacenonalignedID)) then 
-                    tvfna = [tvfna, tvf(j)]
+            else ! 'regular' vertex                
+                ! Check if it has a non-aligned face in the current tube 
+                ! and a non-aligned face in the neighbouring tube. If so, 
+                ! don't remove the vertex or it's non-aligned faces
+                allocate(tvfna(0))
+                do j = 1, size(tvf)
+                    if (any(topomesh%face%type(tvf(j)) == TMfacenonalignedID)) then 
+                        tvfna = [tvfna, tvf(j)]
+                    end if 
+                end do 
+                if (any(istuberadface(tvfna)) .and. any(.not. istuberadface(tvfna))) then 
+                    ! Don't delete this vertex and faces
+                    remv(mergevert(i)) = .false.
+                    remf(tvfna) = .false. 
                 end if 
-            end do 
-            if (any(istuberadface(tvfna)) .and. any(.not. istuberadface(tvfna))) then 
-                ! Don't delete this vertex and faces
-                remv(mergevert(i)) = .false.
-                remf(tvfna) = .false.
+                ! Housekeeping
+                deallocate(tvfna)
             end if 
-
-            ! Housekeeping
-            deallocate(tvfna)
         end do
 
         ! Remove faces
@@ -8725,7 +8733,8 @@ module ggmod_topology2D
         type(TopomeshOptionsUDT), intent(in)    :: options
 
         ! Auxiliary
-        integer(I8)                             :: tf, ind
+        integer(I8)                             :: tf, ind, indstart(1:2), &
+            indend(1:2)
         integer(I8), allocatable, dimension(:)  :: tracetubes, tubeind, &
             tubef, temps1, temps2, tubefID, sortind, faceind, tracefaces, &
             tubecell, tempind
@@ -8737,7 +8746,7 @@ module ggmod_topology2D
             tempy, temps1r, temps2r, xint, yint, newx, newy
         logical                                 :: isstartlf, wasfound
         logical, allocatable, dimension(:)      :: tracehf, tracelf, &
-            tracec, keepind, remf, isincellpol
+            tracec, keepind, remf, isincellpol, istubeendface
         type(ContourUDT), allocatable           :: allc(:), tempc(:)
         type(PolygonUDT)                        :: cellpol
         type(PolygonUDT), allocatable           :: allpc(:)
@@ -8989,12 +8998,13 @@ module ggmod_topology2D
 
         ! For open contours, check which parts to keep (only parts that 
         ! intersect with the tube faces)
-        !$omp parallel do if (.not. omp_in_parallel()) & 
+        !$omp parallel do if (.not. omp_in_parallel() .and. .false.) & 
         !$omp default(none) &
         !$omp private(i, j, tubef, s2r, tubefID, xint, yint, tempx, &
         !$omp tempy, temps1, temps2, temps1r, temps2r, sortind, keepind, &
         !$omp ind, wasfound, tubecell, xcrda, ycrda, cellpol, cc, &
-        !$omp isincellpol, newx, newy, tempind) &
+        !$omp isincellpol, newx, newy, tempind, istubeendface, indstart, &
+        !$omp indend) &
         !$omp shared(topomesh, tubeind, allc, faceind)
         do i = 1, size(allc)
             ! Get tube faces
@@ -9018,6 +9028,9 @@ module ggmod_topology2D
                     call Write2DCoordinateData(allc(i)%x, allc(i)%y, 'splitTMTubes_contour')
                 elseif (size(tempx) > 1) then 
                     ! Print warning - unexpected
+                    !$omp critical
+                    call WriteTopologicalMesh(topomesh, 'topomesh_multipleintersect', .false.)
+                    !$omp end critical
                     print *, 'SplitTMTubesTA: traced ' // & 
                         'contour intersects multiple times with one of the radial ' // & 
                         'faces of tube ', tubeind(i), ', results may be unexpected'
@@ -9054,7 +9067,7 @@ module ggmod_topology2D
                 ! any vertices of the contour segment (except start/end) 
                 ! are inside the cell polygon. 
 
-                ! Checks
+                ! Checks 
                 if ((s2r(1) /= 0.0_R8) .or. (s2r(size(s2r)) /= size(allc(i)%x)-1)) then 
                     ! Unexpected
                     call gdErrorHandler('SplitTMTubesTA: '  // &
@@ -9068,57 +9081,107 @@ module ggmod_topology2D
                     tubecell(1), xcrda, ycrda)
                 call cellpol%Construct(xcrda%Get(), ycrda%Get())
 
-                ! Loop over all segments
-                cc = 0
-                wasfound = .false. 
-                do j = 1, size(s2r)-1
-                    ! Check if this segment should be considered
-                    if (((tubefID(j) == tubef(1)) .and. (tubefID(j+1) == tubef(2))) .or. &
-                        ((tubefID(j) == tubef(2)) .and. (tubefID(j+1) == tubef(1)))) then 
-                            
-                        ! Update the counter
-                        cc = cc + 1
+                ! Determine the two segments
+                istubeendface = tubefID == tubef(1) .or. tubefID == tubef(size(tubef))
+                if (istubeendface(1) .or. istubeendface(size(tubefID))) then 
+                    ! Not yet verified
+                    print *, 'SplitTMTubesTA: code not yet verified'
 
-                        ! Extract the segment coordinates without end points
-                        tempind = [(k, k = 1, size(allc(i)%x))]
-                        tempind = pack(tempind, (tempind > s2r(j)+1.0_R8) .and. &
-                            (tempind < s2r(j+1)+1.0_R8))
-                        tempx = [allc(i)%x(tempind)]
-                        tempy = [allc(i)%y(tempind)]
-
-                        ! Check sizes
-                        if (size(tempx) == 0) then 
-                            ! Need to refine a bit
-                            print *, 'SplitTMTubesTA: closed contour segment ' // & 
-                                'does not have any vertices in between, attempting ' // & 
-                                'to refine (results may be inaccurate...)'
-                            tempx = real([(k, k = 0, 3)], kind=R8)/3.0_R8*(xint(j+1) - xint(j)) + xint(j)
-                            tempy = real([(k, k = 0, 3)], kind=R8)/3.0_R8*(yint(j+1) - yint(j)) + yint(j)
-                            tempx = tempx(2:size(tempx)-1)
-                            tempy = tempy(2:size(tempy)-1)
-                        end if 
-
-                        ! Check if there are any vertices in the cell polygon
-                        call Inpolygon(cellpol, tempx, tempy, isincellpol)
-                        if (any(isincellpol)) then 
-                            ! Check if already found a segment
-                            if (wasfound) then 
-                                call gdErrorHandler('SplitTMTubesTA: ' // & 
-                                    'both segments appear to be located ' // &
-                                    'inside of tube, unexpected')
-                            end if 
-                            wasfound = .true.
-                            newx = [xint(j), tempx, xint(j+1)] 
-                            newy = [yint(j), tempy, yint(j+1)]
-                        end if 
+                    ! Should be start and end
+                    if (.not. istubeendface(1) .or. .not. istubeendface(size(tubefID))) then 
+                        ! Should be technically impossible?
+                        call gdErrorHandler('SplitTMTubesTA: first ' // & 
+                            'and last face are the same but not ' // & 
+                            'according to istubeendface, weird')
                     end if
+
+                    ! Set these to false for later
+                    istubeendface([1, size(tubefID)]) = .false. 
+
+                    ! First segment
+                    indstart(1) = 1
+                    indend(1) = findloc(istubeendface, .true., 1, back=.false.)
+                    
+                    ! Second segment
+                    indstart(2) = indend(1)
+                    indend(2) = size(tubefID)
+
+                elseif (count(istubeendface) >= 2) then 
+
+                    ! First segment 
+                    ind = findloc(istubeendface, .true., 1, back=.false.)
+                    indstart(1) = ind 
+                    where (tubefID == tubefID(ind)) istubeendface = .false. ! set all these to false
+                    istubeendface(ind) = .false. 
+                    ind = findloc(istubeendface, .true., 1, back=.false.)
+                    if (ind == 0) then 
+                        ! No end faces found - unexpected
+                        call WriteTopologicalMesh(topomesh, 'topomesh_error')
+                        call Write2DCoordinateData(allc(i)%x, allc(i)%y, 'splitTMTubes_contour')
+                        call gdErrorHandler('SplitTMTubesTA: ' // & 
+                            'could not find contour part that intersects with ' // & 
+                            'all tube faces in the right order')
+                    end if 
+                    indend(1) = ind 
+
+                    ! Second segment - simply 'reverse' of other two
+                    indstart(2) = indend(1)
+                    indend(2) = indstart(1)
+                else
+                    ! Not enough intersections found, unexpected
+                    call WriteTopologicalMesh(topomesh, 'topomesh_error')
+                    call Write2DCoordinateData(allc(i)%x, allc(i)%y, 'splitTMTubes_contour')
+                    call gdErrorHandler('SplitTMTubesTA: ' // & 
+                        'could not find contour part that intersects with ' // & 
+                        'all tube faces in the right order')
+                end if 
+
+                wasfound = .false.
+                do j = 1, 2 
+                    ! Extract the segment coordinates without end points
+                    tempind = [(k, k = 1, size(allc(i)%x))]
+                    if (indstart(j) < indend(j)) then 
+                        tempind = pack(tempind, (tempind > s2r(indstart(j))+1.0_R8) .and. &
+                            (tempind < s2r(indend(j))+1.0_R8))
+                    else
+                        tempind = [pack(tempind, (tempind > s2r(indstart(j))+1.0_R8)), &
+                            pack(tempind, (tempind < s2r(indend(j))+1.0_R8))]
+                    end if 
+                    tempx = [allc(i)%x(tempind)]
+                    tempy = [allc(i)%y(tempind)]
+
+                    ! Check sizes
+                    if (size(tempx) == 0) then 
+                        ! Need to refine a bit
+                        print *, 'SplitTMTubesTA: closed contour segment ' // & 
+                            'does not have any vertices in between, attempting ' // & 
+                            'to refine (results may be inaccurate...)'
+                        tempx = real([(k, k = 0, 3)], kind=R8)/3.0_R8*(xint(j+1) - xint(j)) + xint(j)
+                        tempy = real([(k, k = 0, 3)], kind=R8)/3.0_R8*(yint(j+1) - yint(j)) + yint(j)
+                        tempx = tempx(2:size(tempx)-1)
+                        tempy = tempy(2:size(tempy)-1)
+                    end if 
+
+                    ! Check if there are any vertices in the cell polygon
+                    call Inpolygon(cellpol, tempx, tempy, isincellpol)
+                    if (any(isincellpol)) then 
+                        ! Check if already found a segment
+                        if (wasfound) then 
+                            call gdErrorHandler('SplitTMTubesTA: ' // & 
+                                'both segments appear to be located ' // &
+                                'inside of tube, unexpected')
+                        end if 
+                        wasfound = .true.
+                        newx = [xint(indstart(j)), tempx, xint(indend(j))] 
+                        newy = [yint(indstart(j)), tempy, yint(indend(j))]
+                    end if 
                 end do 
 
                 ! Sanity check: should've found two segments
-                if (cc /= 2) then 
-                    call gdErrorHandler('SplitTMTubesTA: closed contour ' // & 
-                        'did not have two segments as expected, this may be a bug')
-                end if 
+                !if (cc /= 2) then 
+                !    call gdErrorHandler('SplitTMTubesTA: closed contour ' // & 
+                !        'did not have two segments as expected, this may be a bug')
+                !end if 
 
                 ! Sanity check: should've found a segment that lies within
                 ! the polygon cell
@@ -15388,6 +15451,45 @@ module ggmod_topology2D
         end if 
     end function
 
+    function GetTMVertFaceNeigInclude(vert, i, tf, included) result(res)
+
+        ! Description
+        !============
+        ! Return the 'left' and 'right' neighbouring faces for vertex tv and
+        ! current face tf. If the face is not found, fn is empty. Otherwise, fn is
+        ! a 1-by-2 integer array containing the face indices. Here, 
+        ! we only consider faces that are included (i.e. included(i) = .true.)
+
+        ! Declare variables
+        !==================
+        ! Arguments
+        integer(I8), intent(in)     :: i, tf 
+        class(TopomeshVertUDT)      :: vert 
+        integer(I8), allocatable    :: res(:)
+        logical, intent(in)         :: included(:)
+
+        ! Auxiliary
+        integer(I8)                     :: tfind
+        integer(I8), allocatable        :: tvf(:), tvfe(:)
+
+        ! Get vertex faces
+        tvf = GetTMVertFace(vert, i)
+
+        ! Remove any excluded faces
+        tvf = pack(tvf, included(tvf))
+
+        ! Find where this face is located
+        tfind = findloc(tvf, tf, 1)
+
+        ! Find the neighbours 
+        if (tfind == 0) then 
+            allocate(res(0))
+        else
+            tvfe = [tvf(size(tvf)), tvf, tvf(1)]
+            res = [tvfe(tfind), tvfe(tfind+2)]
+        end if 
+    end function
+
     function AreTMFacesAdjacent(face, f1, f2) result(res)
 
         ! Description
@@ -17194,56 +17296,9 @@ module ggmod_topology2D
             ! Loop 
             !=====
             do while (.true.)
-
-                ! First, check if we can simply continue without needing
-                ! to check the turndirection
-                vertface = vert%GetFace(tv)
-                vertface = pack(vertface, (vertface /= tf .and. &
-                    considerface(vertface)) .and. (fc(vertface) > 0))
-                if (size(vertface) == 1) then 
-                    ! Face found, add and skip the rest of the loop
-                    nf = vertface(1)
-                    nfv = face%vert(nf, :)
-                    istfv = nfv == tv
-                    if (.not.any(istfv)) then 
-                        ! Current vertex is not found in the next face, this should
-                        ! not be possible
-                        call gdErrorHandler('GetClosedPolygonFromTopomeshFaces: ' // & 
-                            'next face does not have current vertex, ' // & 
-                            'check input')
-                    end if 
-                    if (all(istfv)) then 
-                        ! Next face is a face that starts and ends in the same
-                        ! vertex - not supported
-                        call gdErrorHandler('GetClosedPolygonFromTopomeshFaces: ' // & 
-                            'face detected with same start and end vertex, ' // & 
-                            'not supported')
-                    end if 
-                    
-                    ! Add and update
-                    tcf = [tcf, nf]
-                    tcv = [tcv, tv]
-                    tf = nf
-                    if (.not. istfv(1)) then 
-                        tv = nfv(1)
-                    else
-                        tv = nfv(2)
-                    end if 
-                    
-                    ! Update counter
-                    fc(tf) = fc(tf) - 1
-
-                    ! Check exit condition
-                    if ((startface == nf) .and. (tv == startvert)) then 
-                        exit
-                    end if 
-
-                    ! Skip rest
-                    cycle
-                end if 
                 
                 ! Get neighbouring faces in correct order
-                faceneig = GetTMVertFaceNeig(vert, tv, tf)
+                faceneig = GetTMVertFaceNeigInclude(vert, tv, tf, considerface)
                         
                 ! Sanity checks
                 if (size(faceneig) == 0) then 
@@ -17361,6 +17416,10 @@ module ggmod_topology2D
                 exit
             end if
         end do  
+
+        if (size(sortedfaces) == 0) then 
+            call WriteTopologicalMesh(topomesh, 'topomesh_emptytubefaces', .false.)
+        end if 
 
         ! Housekeeping
         !=============

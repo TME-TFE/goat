@@ -418,8 +418,7 @@ module ggmod_topology2D
         class(StreamlineTracerUDT), intent(in)  :: streamlinetracer
 
         ! Auxiliary
-        real(R8)                                :: dxfracmin, dyfracmin, &
-            dx, dy
+        real(R8)                                :: dxfracmin, dyfracmin
         real(R8), allocatable, dimension(:)     :: xb, yb, xps, &
             yps, xg, yg, Vf, xgv, ygv
         real(R8), parameter                     :: emptyR8(0)= 0
@@ -448,14 +447,16 @@ module ggmod_topology2D
         xb = [minval([xps, magneticField%interp%xgv]), maxval([xps, magneticField%interp%xgv])]
         yb = [minval([yps, magneticField%interp%ygv]), maxval([yps, magneticField%interp%ygv])]
 
-        ! Extend a bit to avoid boundary effects (e.g. tangency points
-        ! lying exactly on the boundary of the magnetic field and vessel)
-        dx = xb(2)-xb(1)
-        xb(1) = xb(1) - dx*0.01_R8 
-        xb(2) = xb(2) + dx*0.01_R8
-        dy = yb(2)-yb(1)
-        yb(1) = yb(1) - dy*0.01_R8 
-        yb(2) = yb(2) + dy*0.01_R8
+        ! Throw an error if the magnetic field does not cover the 
+        ! entire vessel area (and further)
+        if ((maxval(magneticField%interp%xgv) <= maxval(xps)) .or. &
+            (maxval(magneticField%interp%ygv) <= maxval(yps)) .or. &
+            (minval(magneticField%interp%xgv) >= minval(xps)) .or. &
+            (minval(magneticField%interp%ygv) >= minval(yps))) then 
+            call gdErrorHandler('ConstructBasicTopologicalMesh: ' // & 
+                'the magnetic field does not fully cover the vessel ' // & 
+                'geometry. Please extend the equilibrium')
+        end if 
 
         ! Construct a 2D structured grid for tracing (may be extended
         ! in the future for different grid types)

@@ -850,7 +850,8 @@ module ggmod_topology2D
             nx, nvinit
         integer(I8), allocatable, dimension(:)  :: ts1, ts2, tt, typee, &
             vf1, vf2, teid, tsid, sortind, temps1, temps2, v1, v2, tcIDs
-        real(R8)                                :: tempx, tempy, ltot
+        real(R8)                                :: tempx, tempy, ltot, &
+            drtol, dztol
         real(R8), allocatable, dimension(:)     :: xg, yg, f, fx, fy, &
             tx, ty, thiseig, tf, tfxx, tfxy, tfyy, xe, ye, fe, tsr1, tsr2, &
             tsrid, tempxint, tempyint, tfval, dtfval, frac, dx, dy, dl
@@ -969,10 +970,15 @@ module ggmod_topology2D
             fypsrid(i) = ConstructRealDynamicArray()
         end do 
 
+        ! Set tolerances for newton solver
+        drtol = abs(3*sum(magneticField%interp%refdx)/size(magneticField%interp%refdx))
+        dztol = abs(3*sum(magneticField%interp%refdy)/size(magneticField%interp%refdy))
+
         ! Compute intersections
         !$omp parallel do default(none) schedule(dynamic) collapse(2) ordered &
         !$omp shared(fxp, fyp, magneticField, fxpeid, fxpsid, fxpsrid, &
-        !$omp fypeid, fypsid, fypsrid, xc, yc, fc, tc, ec, nfxc, nfyc, donewton) & 
+        !$omp fypeid, fypsid, fypsrid, xc, yc, fc, tc, ec, nfxc, nfyc, &
+        !$omp drtol, dztol, donewton) & 
         !$omp private(i, j, tx, ty, ts1, ts2, tsr1, tsr2, nx, tt, k, &
         !$omp tempx, tempy, conv, tf, tfxx, tfxy, tfyy, thiseig)
         do i = 1, nfxc
@@ -995,8 +1001,14 @@ module ggmod_topology2D
                         
                         ! Check 
                         if (conv) then 
+                            if ((abs(tempx - tx(k)) > drtol) .or. (abs(tempy - ty(k)) > dztol)) then 
+                                ! Don't update
+                                print *, 'TraceExtrema2DBox: newton solver did ' // & 
+                                'not converge, taking original estimate'
+                            else
                             tx(k) = tempx
                             ty(k) = tempy
+                            end if 
                         else
                             print *, 'TraceExtrema2DBox: newton solver did ' // & 
                                 'not converge, taking original estimate'

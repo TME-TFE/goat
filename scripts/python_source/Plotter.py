@@ -1289,6 +1289,38 @@ def PlotGridFaces(grid, fignum):
     # Set axes
     SetAxesLimits2D(plt.gca(), xb, yb)
 
+def PlotGridAlignedFaces(grid, fignum):
+    # Plot aligned only
+
+    # Initialize plotting bounds
+    xb = [min(grid.vert.x), max(grid.vert.x)]
+    yb = [min(grid.vert.y), max(grid.vert.y)]
+
+    # Construct aligned and non-aligned face coordinates
+    try:
+        aligned = np.nonzero(grid.face.aligned)
+        aligned = aligned[0]
+    except:
+        aligned = np.arange(0, grid.face.ntot, 1, dtype=int)
+    xfal = np.zeros(len(aligned)*3, dtype=float)
+    yfal = np.zeros(len(aligned)*3, dtype=float)
+
+    cc = 0
+    for i in aligned: 
+        xfal[3*cc] = grid.vert.x[grid.face.v1[i]-1]
+        xfal[3*cc+1] = grid.vert.x[grid.face.v2[i]-1]
+        xfal[3*cc+2] = np.nan
+        yfal[3*cc] = grid.vert.y[grid.face.v1[i]-1]
+        yfal[3*cc+1] = grid.vert.y[grid.face.v2[i]-1]
+        yfal[3*cc+2] = np.nan
+        cc = cc + 1 
+    
+    # Plot faces
+    PlotPolygons2D(xfal, yfal, fignum, color='b', marker='', linewidth=0.25)
+
+    # Set axes
+    SetAxesLimits2D(plt.gca(), xb, yb)
+
 # Grid generation data plotting: cells
 def PlotGridCells(grid, fignum):
     # Plot cells only
@@ -1967,7 +1999,25 @@ def PlotPolygons2DQuiver(x, y, fignum, **plotargs):
     dx = -(x[0:len(x)-1] - x[1:len(x)])
     dy = -(y[0:len(y)-1] - y[1:len(y)])
     plt.quiver(x[0:len(x)-1], y[0:len(y)-1], dx, dy, 
-        **plotargs, angles='xy', scale_units='xy', scale=1)
+        **plotargs, angles='xy', scale_units='xy', scale=1, headwidth=6)
+def PlotPolygonNormals2D(x, y, fignum, **plotargs):
+     # Set the current figure
+    plt.figure(fignum)
+
+    # Plot the data as a polygon plot
+    #fig, ax = plt.subplots()
+    plt.plot(x, y, **plotargs)
+
+    # Plot normalized normal vector
+    dx = -(x[0:len(x)-1] - x[1:len(x)])
+    dy = -(y[0:len(y)-1] - y[1:len(y)])
+    nx = -dy/np.sqrt(dx**2 + dy**2)
+    ny = dx/np.sqrt(dx**2 + dy**2)
+    xf = 0.5*(x[0:len(x)-1] + x[1:len(x)])
+    yf = 0.5*(y[0:len(y)-1] + y[1:len(y)])
+    plt.quiver(xf, yf, nx, ny, 
+        **plotargs, angles='xy', scale_units='xy', headwidth=6)
+
 
 def PlotVertexPairs2DQuiver(x1, y1, x2, y2, fignum, **plotargs):
     # Plot an arrow between vertex pairs defined by (x1, y1), (x2, y2)

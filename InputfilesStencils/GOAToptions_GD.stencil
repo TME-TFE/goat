@@ -12,33 +12,19 @@ VERSION 1.00.00
 'goat.meth'                         'GD'
 
 # Input file locations 
-#'goat.gridfilepath'                 'traduit.out.b2us_smoothed2'
-#'goat.gridfilepath'                 'traduit.out.b2us_basegeom'
-'goat.gridfilepath'                 'traduit.out.b2us_gd'
+'goat.gridfilepath'                 'traduit.out.b2us'
 'goat.magneticfieldfilepath'        'rzpsi.dat'
 'goat.structurefilepath'            'structure.dat'
 'goat.GDinputfilepath'              'GOAToptions.dat'
 
 # Output file locations 
-'goat.writefilepath'                'traduit.out.b2us'  
+'goat.writefilepath'                'traduit.out.b2us_gd'  
 
 # Output options 
 'goat.write_final'                  '1'
 'goat.write_traduitb2us'            '1'
 'goat.write_b2agdat'                '1'
-'goat.write_Xpointdata'             '0'
-'goat.write_OMPdata'                '0'
 
-# Switches to identify case
-'goat.vesselmode'                   '0'
-'goat.slab'                         '0'
-'goat.artificial_slab'              '0'
-
-# OMP/IMP
-'goat.OMP_r'                        '[0, 0]'
-'goat.OMP_z'                        '[0, 0]'
-'goat.IMP_r'                        '[0, 0]'
-'goat.IMP_z'                        '[0, 0]'
 
 #-------------------------------------------------------------------------#
 #                          INTERFACING OPTIONS                            #
@@ -56,12 +42,6 @@ VERSION 1.00.00
 # Narrow grid
 'goat.GDtoGA.facelabelmappingGG'   '[-3, -4, -2, -1]'
 'goat.GDtoGA.facelabelmappingGD'   '[1, 1, 3, 2]'
-
-#'goat.GDtoGA.facelabelmappingGG'  '[1:23, 36:38, 25:27, 24, 28:35, 39:67, 68:70]'
-#'goat.GDtoGA.facelabelmappingGD'  '[5*23, 1*3, 1*3, 4*38, 5*3]'
-# 'goat.GDtoGA.facelabelmappingGG' '[1, 2, 36:38, 47:49, 36:103, 104:106]'
-# 'goat.GDtoGA.facelabelmappingGD' '[5, 5, 1*3, 1*3, 4*68, 5*3]'
-
 
 # Face label mappings between GG and GD 
 'goat.GGtoGD.facelabelsubfrom'   '[]'
@@ -106,7 +86,7 @@ VERSION 1.00.00
 'goat.vessel.readmeth'          'read_structure'
 
 # Refinement options for vessel
-'goat.vessel.refinevessel'          '1'
+'goat.vessel.refinevessel'          '0'
 'goat.vessel.maxvesseldist'         '1e-3'
 'goat.vessel.minreffac'             '10'
 
@@ -131,12 +111,6 @@ VERSION 1.00.00
 #-------------------------------------------------------------------------#
 #                          ADDITIONAL DATA                                #
 #-------------------------------------------------------------------------#
-# OMP and IMP
-'goat.data.OMPr'                '[1.8 2.4]'
-'goat.data.OMPz'                '[0 0]'
-'goat.data.IMPr'                '[0.65 2]'
-'goat.data.IMPz'                '[0 0]'
-
 # Data
 'goat.mf.RBtor'                '-1.2046'
 
@@ -218,7 +192,7 @@ VERSION 1.00.00
 'gd.design.ec.boundaryfunctions'    '1'
 'gd.design.ec.fluxfunction'         '1'
 'gd.design.ec.xpoints'              '1'
-'gd.design.ec.edgelengths'          '1'
+'gd.design.ec.edgelengths'          '0'
 'gd.design.ec.lengthratio'          '0'
 'gd.design.ec.orthogonality'        '0'
 'gd.design.ec.fixedfluxvalues'      '1'
@@ -233,7 +207,7 @@ VERSION 1.00.00
 'gd.design.ec.par.epsortho' 		'1e-3'
 
 # Boundary function constraint parameters
-'gd.design.ec.par.boundaryfunctions.shapemeth' 			'closedpolygon_smoothapproximation'
+'gd.design.ec.par.boundaryfunctions.shapemeth' 			'closedpolygon_exact'
 'gd.design.ec.par.boundaryfunctions.resx'               '400'
 'gd.design.ec.par.boundaryfunctions.resy'               '400'
 'gd.design.ec.par.boundaryfunctions.offsetfracx'        '0.1'
@@ -259,19 +233,10 @@ VERSION 1.00.00
 'gd.design.ec.par.orthogonality.checkperp'				'0'
 'gd.design.ec.par.orthogonality.epsperp' 				'0.2'
 'gd.design.ec.par.orthogonality.includecutcellvert'     '0'
-'gd.design.ec.par.orthogonality.includeboxx' 			'[5.0, 13.0]' 
-'gd.design.ec.par.orthogonality.includeboxy' 			'[-2.0, 8.0]' 
+'gd.design.ec.par.orthogonality.includeboxx' 			'[]' 
+'gd.design.ec.par.orthogonality.includeboxy' 			'[]' 
 'gd.design.ec.par.orthogonality.excludeboxx' 			'[]' 
 'gd.design.ec.par.orthogonality.excludeboxy' 			'[]' 
-
-# Some decent bounding box values for different geometries 
-# TCV, 		include: x: [-1 2; 0.72 0.82 ], 	y:  [-0.2 2; -0.3 -0.2]
-# DEMO,		include: x: [6 12; 7 8] 			y: [-5 8; -6 -5]
-# DEMO, 	exclude: x: [7.5 7.8], 				y: [-5.4 -4.2]
-# CMOD, 	include: x: [0 1; 0.52 0.58], 		y: [-0.32 1; -0.42 -0.32]
-# CMOD, 	exlude:  x: [0.56 0.62], 			y: [-0.35 -0.1]
-# ASDEX, 	include: x: [1 2.3], 				y: [-0.5 1.2]
-# ITER, 	include: x: [4 8.5; 5 6; 6 7.5], 	y: [-2 5; -3 -2; -2.5 -2]
 
 # Edge length constraint parameters 
 'gd.design.ec.par.edgelengths.dovesseledges'    '1'
@@ -309,7 +274,7 @@ VERSION 1.00.00
 # See SetNumParams.m for the default settings
 
 # General optimization
-'gd.opt.num.itmax'                  '60'
+'gd.opt.num.itmax'                  '100'
 'gd.opt.num.tol'                    '1e-10'
 
 # KKT driver (see also GridKKTDriver.m)

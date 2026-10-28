@@ -12,29 +12,25 @@ VERSION 1.00.00
 'goat.meth'                         'GA'
 
 # Input file locations 
-#'goat.gridfilepath'                 'traduit.out.b2us_smoothed2'
-#'goat.gridfilepath'                 'traduit.out.b2us_basegeom'
-'goat.gridfilepath'                 'traduit.out.b2us_gd'
+'goat.gridfilepath'                 'traduit.out.b2us'
 'goat.magneticfieldfilepath'        'rzpsi.dat'
 'goat.structurefilepath'            'structure.dat'
 'goat.GDinputfilepath'              'GOAToptions.dat'
 
 # Output file locations 
-'goat.writefilepath'                'traduit.out.b2us'  
+'goat.writefilepath'                'traduit.out.b2us_ga'  
 
 # Output options 
 'goat.write_final'                  '1'
 'goat.write_traduitb2us'            '1'
 'goat.write_b2agdat'                '1'
-'goat.write_Xpointdata'             '0'
-'goat.write_OMPdata'                '0'
 
 # Switches to identify case
 'goat.vesselmode'                   '0'
 'goat.slab'                         '0'
 'goat.artificial_slab'              '0'
 
-# OMP/IMP
+# OMP/IMP - DEPRECATED
 'goat.OMP_r'                        '[0, 0]'
 'goat.OMP_z'                        '[0, 0]'
 'goat.IMP_r'                        '[0, 0]'
@@ -56,12 +52,6 @@ VERSION 1.00.00
 # Narrow grid
 'goat.GDtoGA.facelabelmappingGG'   '[-3, -4, -2, -1]'
 'goat.GDtoGA.facelabelmappingGD'   '[1, 1, 3, 2]'
-
-#'goat.GDtoGA.facelabelmappingGG'  '[1:23, 36:38, 25:27, 24, 28:35, 39:67, 68:70]'
-#'goat.GDtoGA.facelabelmappingGD'  '[5*23, 1*3, 1*3, 4*38, 5*3]'
-# 'goat.GDtoGA.facelabelmappingGG' '[1, 2, 36:38, 47:49, 36:103, 104:106]'
-# 'goat.GDtoGA.facelabelmappingGD' '[5, 5, 1*3, 1*3, 4*68, 5*3]'
-
 
 # Face label mappings between GG and GD 
 'goat.GGtoGD.facelabelsubfrom'   '[]'
@@ -106,7 +96,7 @@ VERSION 1.00.00
 'goat.vessel.readmeth'          'read_structure'
 
 # Refinement options for vessel
-'goat.vessel.refinevessel'          '1'
+'goat.vessel.refinevessel'          '0'
 'goat.vessel.maxvesseldist'         '1e-3'
 'goat.vessel.minreffac'             '10'
 
@@ -131,11 +121,6 @@ VERSION 1.00.00
 #-------------------------------------------------------------------------#
 #                          ADDITIONAL DATA                                #
 #-------------------------------------------------------------------------#
-# OMP and IMP
-'goat.data.OMPr'                '[1.8 2.4]'
-'goat.data.OMPz'                '[0 0]'
-'goat.data.IMPr'                '[0.65 2]'
-'goat.data.IMPz'                '[0 0]'
 
 # Data
 'goat.mf.RBtor'                '-1.2046'

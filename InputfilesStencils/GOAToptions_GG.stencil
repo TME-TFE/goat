@@ -1,0 +1,247 @@
+#=========================================================================#
+#                                                                         #
+#                           GOATOPTIONS                                   #
+#                         GRID GENERATION                                 #
+#=========================================================================#
+# General options
+'goat.debug'                        '0'
+'goat.meth'                         'GG'
+
+# Input file locations 
+'goat.gridfilepath'                 'XXXXXXXX' # irrelevant: grid will be generated
+'goat.magneticfieldfilepath'        'rzpsi.dat' # either the rzpsi.dat or the .equ file
+'goat.structurefilepath'            'structure.dat' # the structure.dat file containing the points defining the vessel
+'goat.GDinputfilepath'              'GOAToptions.dat'
+
+# Output file locations 
+'goat.writefilepath'                'traduit.out.b2us'  # standard name
+
+# Output options 
+'goat.write_final'                  '1'
+'goat.write_traduitb2us'            '1'
+
+#-------------------------------------------------------------------------#
+#                          GRID OPTIONS                                   #
+#-------------------------------------------------------------------------#
+# Read method 
+'goat.grid.readmeth'                'traduitb2us' 
+
+# Grid type
+'goat.grid.type'                    'plasma'
+
+#-------------------------------------------------------------------------#
+#                          MAGNETIC FIELD OPTIONS                         #
+#-------------------------------------------------------------------------#
+# Read method
+'goat.mf.readmeth'                  'rzpsi' # equ or rzpsi (NO DOTS, i.e. no .equ nor rzpsi.dat)
+
+# Interpolation options
+'goat.mf.interpC'                   '3'
+'goat.mf.interpM'                   '6'
+'goat.mf.interpmeth'                'uniformgrid'
+'goat.mf.reinterpolate'             '0'
+'goat.mf.resx'                      '100'
+'goat.mf.resy'                      '100'
+
+#-------------------------------------------------------------------------#
+#                          VESSEL STRUCTURE OPTIONS                       #
+#-------------------------------------------------------------------------#
+# Environment (including vessel etc) options 
+# Vessel geometry & reading method
+'goat.vessel.readmeth'          'read_structure'
+
+# Refinement options for vessel
+'goat.vessel.refinevessel'          '1'
+'goat.vessel.maxvesseldist'         '1e-3'
+'goat.vessel.minreffac'             '0'
+
+# Target plate definition
+'goat.vessel.TP'                    '[1]'
+'goat.vessel.TPind'                 '[1]'
+
+# Structures to be excluded when constructing vessel (if empty, all are included)
+'goat.vessel.exclude'               '[]'
+
+# Vessel field description (similar to magnetic field interpolant, 
+# but for vessel - only used for vessel distance penalty, and if shape
+# method is the same, also used for boundary constraints)
+'goat.vessel.shapemeth'             'closedpolygon_exact'
+'goat.vessel.resx'                  '50'
+'goat.vessel.resy'                  '400'
+'goat.vessel.offsetfracx'           '0.1'
+'goat.vessel.offsetfracy'           '0.1'
+'goat.vessel.interpC'               '3'
+'goat.vessel.interpM'               '6'
+
+#-------------------------------------------------------------------------#
+#                          ADDITIONAL DATA                                #
+#-------------------------------------------------------------------------#
+
+# Data
+#'goat.mf.RBtor'                '-0.8340078592300453'
+
+#-------------------------------------------------------------------------#
+#                     GENERAL GRID GENERATION OPTIONS                     #
+#-------------------------------------------------------------------------#
+# General options
+'gg.verbosity'                          '1'
+'gg.vertexconstructionmethod'           'orthogonal'
+'gg.TMcellgriddingorder'                'sequential'
+'gg.cellconstructionmethod'             'quads_triangles'
+'gg.ref.readexistingrefdata'            '0'
+'gg.labels.structurebased'              '1' # output face labels based on structure numbering - recommended!
+'gg.dogriddiagnostics'                  '1' # check for intersections - recommended, but may be slow
+
+#-------------------------------------------------------------------------#
+#                         TOPOLOGICAL MESH OPTIONS                        #
+#-------------------------------------------------------------------------#
+
+# Read exising file? 
+'gg.tm.readexistingTM'          '0' # if set to 1 avoids generating again the topology and reads the existing one. Might spare some tens of seconds of execution time
+'gg.tm.readexistingtracers'     '0' # should have same value as gg.tm.readexistingTM, to be merged in the future... 
+'gg.tm.writedebugoutput'        '0' # only 1 if you need to debug what's going wrong on the topomesh side
+'gg.tm.TMfilepath'              './output/topomesh.dat'
+'gg.tm.TMfieldtracerfilepath'   './output/TMfieldtracer.dat'
+'gg.tm.TMvesseltracerfilepath'  './output/TMvesseltracer.dat'
+
+# Magnetic field: tracing & resolution (description is determined by GD options)
+'gg.tm.field.resx'              '100'
+'gg.tm.field.resy'              '100'
+'gg.tm.field.donewton'          '0'
+'gg.tm.fieldtol'                '0e-8'
+
+# Tangency point tangency point treatment 
+'gg.tm.dotpvesselbased'         '1' # best used in combination with vessel refinement
+
+# Vessel contour tracing (vessel description is determined by GD options)
+'gg.tm.vessel.resx'             '400'
+'gg.tm.vessel.resy'             '400'
+'gg.tm.vessel.donewton'         '0'
+
+# Adaptations 
+'gg.tm.doadaptations'           '1' # main switch for all adaptations
+'gg.tm.addcoreboundaries'       '1' 
+'gg.tm.addPFboundaries'         '0'
+'gg.tm.cbnd.frac'               '0.1' # determines where core boundary will come ( close to zero: near the X-point, close to 1: near the O-point)
+'gg.tm.PFbnd.frac'              '0.1'
+'gg.tm.removecoreregions'       '1' # remove regions with an O-point
+'gg.tm.removewidegridregions'   '0' # remove regions that are not adjacent to a separatrix
+
+'gg.tm.mergetubes'              '1' # main switch for tube merging
+'gg.tm.mergetubes.meth'         'extensive'
+'gg.tm.dpsimintubes'            '0.0' # psi criterion - not recommended (0.0 means it is off)
+'gg.tm.lradmintubes'            '2.0e-2'# radial length - recommended (0.0 means it is off)
+'gg.tm.mergetubes.allowseparatrix'     '0' # allow merging of separatrix tubes? 
+'gg.tm.simplifyseparatrix'      '1' # simplify separatrix, i.e. merge X-points? 
+'gg.tm.simplifyseparatrix.lpolsepmin'   '1e-3' # X-point distance in poloidal direction below which they are merged into a higher-order X-point 
+
+'gg.tm.removevesselregions'     '0' # main switch for region removal based on vessel structures
+'gg.tm.rvrretain'               '0'
+'gg.tm.rvrvesselIDs'            '[]'
+'gg.tm.rvrdocascade'            '1'
+'gg.tm.rvrcascadedir'           'up'
+'gg.tm.rvrfullycovered'         '1'
+
+'gg.tm.alignvesselparts'        '0' # main switch for aligned vessel part insertion at type 2 tangency points
+'gg.tm.avpminangle'             '5.0' # minimal angle in degrees
+
+#-------------------------------------------------------------------------#
+#                         VERTEX DISTRIBUTION OPTIONS                     #
+#-------------------------------------------------------------------------#
+# General options
+'gg.verbosity'                          '1'
+'gg.vertexconstructionmethod'           'orthogonal'
+'gg.TMcellgriddingorder'                'sequential'
+'gg.cellconstructionmethod'             'quads_triangles'
+'gg.ref.readexistingrefdata'            '0'
+
+# Tube extensions (adaptations)
+'gg.adap.extendtptubes'                 '1'
+'gg.adap.extendvesseltubes'             '1'
+'gg.adap.evt.maxvessellength'           '0.1'
+
+# Refinement options - poloidal
+'gg.ref.meth'                           'lengthbased'
+'gg.ref.LB.doxp'                        '1'
+'gg.ref.LB.dovessel'                    '1'
+'gg.ref.LB.Lmininf'                     '0.002'
+'gg.ref.LB.Lmaxinf'                     '0.05'
+'gg.ref.LB.structureIDs'                '[1]'
+'gg.ref.LB.Lminstructure'               '[0.01, 0.01]'
+'gg.ref.LB.Lmaxstructure'               '[0.025, 0.025]'
+'gg.ref.LB.decaylengthstructure'        '[0.25, 0.25]'
+'gg.ref.LB.Lminxp'                      '0.01'
+'gg.ref.LB.Lmaxxp'                      '0.05'
+'gg.ref.LB.decaylengthxp'               '0.2'
+
+# Boundary layer options - poloidal 
+'gg.ref.BL.dotarget'                  '1' # do boundary layer at targets (target is a vessel segment that's adjacent to a strike point)?
+'gg.ref.BL.nctarget'                  '7'
+'gg.ref.BL.dltarget'                  '[0.002, 0.003, 0.004, 0.006, 0.008, 0.012, 0.016]'
+
+'gg.ref.BL.dovessel'                  '0' # do boundary layer on entire vessel? 
+'gg.ref.BL.ncvessel'                  '7'
+'gg.ref.BL.dlvessel'                  '[0.002, 0.003, 0.004, 0.006, 0.008, 0.012, 0.016]'
+
+'gg.ref.BL.dostructure'               '0' # do boundary layer based on structure labels? 
+'gg.ref.BL.ncstructure'               '5'
+'gg.ref.BL.dlstructure'               '[0.001, 0.0012, 0.0015, 0.002, 0.0027]'
+'gg.ref.BL.structureID'               '[1, 2, 5]'
+
+# 'Boundary' layer options - radial 
+'gg.radref.BL.dosp'                '0' # do BL at strike points? 
+'gg.radref.BL.ncsp'                '6'
+'gg.radref.BL.dlsp'                '[0.0010, 0.0015, 0.002, 0.003, 0.0045, 0.0067]'
+'gg.radref.BL.dllengthbased'       '1'
+
+# Refinement options - radial 
+'gg.radref.meth'                           'no'
+'gg.radref.LB.lengthtype'                  'radial'
+'gg.radref.LB.dosp'                        '0'
+
+'gg.radref.LB.Lmininf'                     '0.010'
+'gg.radref.LB.Lmaxinf'                     '1000.0'
+'gg.radref.LB.Lminsp'                      '0.04'
+'gg.radref.LB.Lmaxsp'                      '0.10'
+'gg.radref.LB.decaylengthsp'               '0.5'
+
+# Radial distribution function (for radial resolution)
+'gg.vd.rd.type'                         'densitybased' # densitybased or uniform - recommended is densitybased
+
+# Options for uniform distribution 
+'gg.vd.rd.distribution.fieldwidth'      '8e0' # delta Psi between flux surfaces
+
+# Options for density-based distribution
+'gg.vd.rd.distribution.doxp'            '1' # Adjust distribution near X-points?
+'gg.vd.rd.distribution.decaylengthxp'   '0.25'; # decay length of exponential near X-point 
+'gg.vd.rd.distribution.densityatxp'     '200'; # desired density at X-point 
+'gg.vd.rd.distribution.densityatinf'    '50'; # desired density at infinity 
+'gg.vd.rd.distribution.points.x'        '[]' # additional points for refinement
+'gg.vd.rd.distribution.points.y'        '[]'
+'gg.vd.rd.distribution.points.val'      '[]'
+'gg.vd.rd.distribution.points.d'        '[]'
+
+# Poloidal distribution function (for initial poloidal resolution - best to take this coarse and use refinement options above)
+'gg.vd.pd.type'                         'uniform'
+
+# Options for uniform distribution
+'gg.vd.pd.distribution.facelength'      '1.0e-1';
+
+# Options for density based distribution
+'gg.vd.pd.distribution.plftype'            'target'
+'gg.vd.pd.distribution.decaylengthplf'     '1.00'
+'gg.vd.pd.distribution.densityatvessel' '100'
+'gg.vd.pd.distribution.densityatinf'    '10'
+
+
+# Numerical settings 
+# Contour resolution 
+'gg.vd.contouring.coarsen'      '0' # coarsen contours - not recommended, may lead to contour intersections
+'gg.vd.contouring.resx'         '400'
+'gg.vd.contouring.resy'         '400'
+
+# Orthogonal line tracer options (only if orthogonal based GG is used)
+'gg.vd.orthlinetracing.step'    '5' # relative step size (larger = less accurate but faster)
+'gg.vd.orthlinetracing.nsteps'  '500' # maximal number of steps to take 
+
+

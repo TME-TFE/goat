@@ -45,7 +45,8 @@ module goatmod_userinput
 
         ! General fields:
         ! - debug: general debug plots on the goat level
-        ! - meth: goat running method. Currently, only 'GD' is supported
+        ! - meth: goat running method. Currently, only 'GG' is fully supported.
+        ! GD and GA are also available, yet not fully supported.
         ! - gridreadtype: type of grid input file to read. Can be 
         ! 'traduitb2us' or b2fgmtry (also in unstructured variant)
         ! - magneticfieldreadtype: type of magnetic field input to read.
@@ -548,7 +549,7 @@ module goatmod_userinput
         ! - type:       the type of grid that is considered. Only
         !                   'plasma' is currently available. 
         ! - readmeth:       the type of inputfile. Can be 'b2fgmtry' 
-        !                   or 'traduit'. Both are unstructured!
+        !                   or 'traduitb2us'. Both are unstructured!
         ! - filepath:       file path indicating where the grid file
         !                   data is stored
 
@@ -1066,7 +1067,7 @@ module goatmod_userinput
 
         ! General
         options%debug           = .false. 
-        options%meth            = 'GD'
+        options%meth            = 'GG'
         options%gdinputfilepath = './GOAToptions.dat'
 
         ! Specify input filenames
@@ -1087,7 +1088,7 @@ module goatmod_userinput
             ! SOLPS defaults
             options%writefilepath   = solps_writefilepath
         else
-            options%writefilepath       = 'traduit.out.b2us_smoothed'
+            options%writefilepath       = 'traduit.out.b2us'
         end if 
         options%write_final         = .true. 
         options%write_traduitb2us   = .true.
@@ -1318,7 +1319,7 @@ module goatmod_userinput
         options%interpC                 = 3
         options%interpM                 = 6
         options%reinterpolate           = .false. 
-        options%resx                    = 100 
+        options%resx                    = 100
         options%resy                    = 100
 
         options%RBtor                   = 0

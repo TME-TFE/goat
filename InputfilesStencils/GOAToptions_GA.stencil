@@ -1,0 +1,183 @@
+VERSION 1.00.00
+#=========================================================================#
+#                                                                         #
+#                       GENERAL GOAT OPTIONS                              #
+#                                                                         #
+#=========================================================================#
+#-------------------------------------------------------------------------#
+#                          MAIN OPTIONS                                   #
+#-------------------------------------------------------------------------#
+# General options
+'goat.debug'                        '1'
+'goat.meth'                         'GA'
+
+# Input file locations 
+'goat.gridfilepath'                 'traduit.out.b2us'
+'goat.magneticfieldfilepath'        'rzpsi.dat'
+'goat.structurefilepath'            'structure.dat'
+'goat.GDinputfilepath'              'GOAToptions.dat'
+
+# Output file locations 
+'goat.writefilepath'                'traduit.out.b2us_ga'  
+
+# Output options 
+'goat.write_final'                  '1'
+'goat.write_traduitb2us'            '1'
+'goat.write_b2agdat'                '1'
+
+# Switches to identify case
+'goat.vesselmode'                   '0'
+'goat.slab'                         '0'
+'goat.artificial_slab'              '0'
+
+# OMP/IMP - DEPRECATED
+'goat.OMP_r'                        '[0, 0]'
+'goat.OMP_z'                        '[0, 0]'
+'goat.IMP_r'                        '[0, 0]'
+'goat.IMP_z'                        '[0, 0]'
+
+#-------------------------------------------------------------------------#
+#                          INTERFACING OPTIONS                            #
+#-------------------------------------------------------------------------#
+# Face label mappings between GG (grid generator) and GD (grid deformation)
+# See Setgoat.m or InterfaceGAtoGD.m for a description of the GD 
+# face label mappings. 
+'goat.GDtoGA.facelabelsubfrom'     '[]'
+'goat.GDtoGA.facelabelsubto'       '[]'
+
+# Wide grid 
+#'goat.GDtoGA.facelabelmappingGG'   '[-4, -5, -6, -7, -1, -2, -3]'
+#'goat.GDtoGA.facelabelmappingGD'   '[1, 1, 1, 1, 2, 3, 3]'
+
+# Narrow grid
+'goat.GDtoGA.facelabelmappingGG'   '[-3, -4, -2, -1]'
+'goat.GDtoGA.facelabelmappingGD'   '[1, 1, 3, 2]'
+
+# Face label mappings between GG and GD 
+'goat.GGtoGD.facelabelsubfrom'   '[]'
+'goat.GGtoGD.facelabelsubto'     '[]'
+
+# Wide grid 
+'goat.GGtoGD.facelabelmappingGG'   '[1, 3, -21, 2, 4]'
+'goat.GGtoGD.facelabelmappingGD'   '[1, 1, 2, 4, 4]'
+
+# Narrow grid
+#'goat.GGtoGD.facelabelmappingGG'   '[-3, -4, -2, -1]'
+#'goat.GGtoGD.facelabelmappingGD'   '[1, 1, 3, 2]'
+
+#-------------------------------------------------------------------------#
+#                          GRID OPTIONS                                   #
+#-------------------------------------------------------------------------#
+# Read method 
+'goat.grid.readmeth'                'traduitb2us' 
+
+# Grid type
+'goat.grid.type'                    'plasma'
+
+#-------------------------------------------------------------------------#
+#                          MAGNETIC FIELD OPTIONS                         #
+#-------------------------------------------------------------------------#
+# Read method
+'goat.mf.readmeth'                  'rzpsi'
+
+# Interpolation options
+'goat.mf.interpC'                   '3'
+'goat.mf.interpM'                   '6'
+'goat.mf.interpmeth'                'uniformgrid'
+'goat.mf.reinterpolate'             '0'
+'goat.mf.resx'                      '200'
+'goat.mf.resy'                      '200'
+
+#-------------------------------------------------------------------------#
+#                          VESSEL STRUCTURE OPTIONS                       #
+#-------------------------------------------------------------------------#
+# Environment (including vessel etc) options 
+# Vessel geometry & reading method
+'goat.vessel.readmeth'          'read_structure'
+
+# Refinement options for vessel
+'goat.vessel.refinevessel'          '0'
+'goat.vessel.maxvesseldist'         '1e-3'
+'goat.vessel.minreffac'             '10'
+
+# Target plate definition
+'goat.vessel.TP'                    '[1]'
+'goat.vessel.TPind'                 '[1]'
+
+# Structures to be excluded when constructing vessel (if empty, all are included)
+'goat.vessel.exclude'               '[]'
+
+# Vessel field description (similar to magnetic field interpolant, 
+# but for vessel - only used for vessel distance penalty, and if shape
+# method is the same, also used for boundary constraints)
+'goat.vessel.shapemeth'             'closedpolygon_exact'
+'goat.vessel.resx'                  '100'
+'goat.vessel.resy'                  '100'
+'goat.vessel.offsetfracx'           '0.1'
+'goat.vessel.offsetfracy'           '0.1'
+'goat.vessel.interpC'               '3'
+'goat.vessel.interpM'               '6'
+
+#-------------------------------------------------------------------------#
+#                          ADDITIONAL DATA                                #
+#-------------------------------------------------------------------------#
+
+# Data
+'goat.mf.RBtor'                '-1.2046'
+
+#=========================================================================#
+#                                                                         #
+#                         GRID ADAPTATION                                 #
+#                                                                         #
+#=========================================================================#
+# General options
+'GAoptions.plt'    '0'
+'GAoptions.plt_qm' '0'
+'GAoptions.timing' '0'
+'GAoptions.meth'   'simple'
+
+# GA operation options
+'GAoptions.rem_small_trias' '1'
+'GAoptions.stacked_trias'   '1'
+'GAoptions.bunch_tria'      '0'
+'GAoptions.bunch_pent'      '0'
+'GAoptions.BLG'             '0'
+'GAoptions.BLG_n_layers'    '1'
+'GAoptions.splitting'       '0'
+'GAoptions.merging'         '1'
+'GAoptions.pents_to_tria'   '1'
+'GAoptions.merging2'        '0'
+
+# Splitting options
+'GAoptions.no_pents'         '1'
+'GAoptions.splittype'        'rad'
+'GAoptions.n_split'          '20'
+'GAoptions.typeT'            'cutcell'
+'GAoptions.rad_type'         'h_rad'
+'GAoptions.pol_type'         'trias'
+'GAoptions.dist_function_threshold_split' '0.9'
+
+# Merging options
+'GAoptions.no_hex'           '1'
+'GAoptions.merg_crit'        'h_pol'
+'GAoptions.merge_h_pol_factor' '1.5'
+'GAoptions.n_merg'           '100'
+'GAoptions.dist_function_threshold_merge' '0.8'
+'GAoptions.merg_crit2'       'h_rad_core'
+'GAoptions.n_merg2'          '20'
+
+# Pentagon allowance
+'GAoptions.no_pents_area_merge' '0'
+'GAoptions.no_pents_area_split' '1'
+'GAoptions.no_pents_area_type'  'dist_function'
+'GAoptions.no_pents_area_maxR'  '2.5'
+'GAoptions.no_pents_area_minR'  '1'
+'GAoptions.no_pents_area_maxZ'  '-0.9'
+'GAoptions.no_pents_area_minZ'  '-2'
+
+# Distance function
+'GAoptions.dist_function'           '1'
+'GAoptions.d_rescale'               '0.5'
+'GAoptions.dist_type'               'target_single_null'
+'GAoptions.d_char_type'             'min_Xpoint_dist'
+'GAoptions.plt_dist_func'           '0'

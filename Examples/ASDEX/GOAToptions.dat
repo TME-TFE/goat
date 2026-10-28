@@ -30,9 +30,9 @@ VERSION 1.00.00
 'goat.write_OMPdata'                '0'
 
 # Switches to identify case
-'goat.vesselmode'                   '0'
-'goat.slab'                         '0'
-'goat.artificial_slab'              '0'
+#'goat.vesselmode'                   '0'
+#'goat.slab'                         '0'
+#'goat.artificial_slab'              '0'
 
 #-------------------------------------------------------------------------#
 #                          INTERFACING OPTIONS                            #
@@ -100,7 +100,7 @@ VERSION 1.00.00
 #-------------------------------------------------------------------------#
 
 # Data
-'goat.data.RBtor'                '-4.496825999658907'
+'goat.mf.RBtor'                '-4.496825999658907'
 
 #=========================================================================#
 #                                                                         #

@@ -34,3 +34,11 @@ runs/*
 *.local/
 local_4
 local_5
+
+# ignore latex auxiliary files 
+*.dvi 
+*.aux 
+*.log
+*.pdf 
+*.gz
+*.toc

@@ -19161,7 +19161,7 @@ module ggmod_gridgeneration2D
         !===================
         ! Determine grid vertex IDs that may lead to a split:
         ! - vertices that are part of both a vessel and aligned boundary face
-        ! - vertices that are type 2 tangency points 
+        ! - vertices that are type 2 tangency points and lie on an actual structure (not void interface)
         allocate(isalignedvert(vert%ntot), isvesselvert(vert%ntot))
         isalignedvert = .false. 
         isvesselvert = .false.
@@ -19175,12 +19175,12 @@ module ggmod_gridgeneration2D
         end do  
         istp = topomesh%vert%type == TMvertextp2ID
         call Unique([pack([(k, k = 1, vert%ntot)], isalignedvert .and. isvesselvert), &
-            pack([(k, k = 1, topomesh%vert%ntot)], istp)], splitvertID)
+            pack([(k, k = 1, topomesh%vert%ntot)], istp .and. isvesselvert(1:topomesh%vert%ntot))], splitvertID)
         allocate(issplitvert(topomesh%vert%ntot))
         issplitvert = .false. 
         where (splitvertID <= topomesh%vert%ntot) issplitvert(splitvertID) = .true. 
 
-        ! Mark tangency points for later
+        ! Mark tangency points for later - here: all tangency points are taken!
         deallocate(istp) 
         allocate(istp(size(splitvertID)))
         istp = .false. 
@@ -19345,7 +19345,7 @@ module ggmod_gridgeneration2D
                     end if 
 
                     ! Loop over all labels of points in between 
-                    pointstart = findloc(srfline%dlcv(j) < templine%dlcv, &
+                    pointstart = findloc(srfline%dlcv(j) <= templine%dlcv, &
                         .false., 1, back=.true.)+1
                     pointend = findloc(srfline%dlcv(j+1) >= templine%dlcv, &
                         .false., 1, back=.false.)-1
@@ -19458,7 +19458,7 @@ module ggmod_gridgeneration2D
                     end if 
 
                     ! Loop over all labels of points in between 
-                    pointstart = findloc(erfline%dlcv(j) < templine%dlcv, &
+                    pointstart = findloc(erfline%dlcv(j) <= templine%dlcv, &
                         .false., 1, back=.true.)+1
                     pointend = findloc(erfline%dlcv(j+1) >= templine%dlcv, &
                         .false., 1, back=.false.)-1
@@ -19574,7 +19574,7 @@ module ggmod_gridgeneration2D
                         end if 
 
                         ! Loop over all labels of points in between 
-                        pointstart = findloc(origline%dlcv(j) < templine%dlcv, &
+                        pointstart = findloc(origline%dlcv(j) <= templine%dlcv, &
                             .false., 1, back=.true.)+1
                         pointend = findloc(origline%dlcv(j+1) >= templine%dlcv, &
                             .false., 1, back=.false.)-1
